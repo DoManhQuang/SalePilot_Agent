@@ -1,4 +1,4 @@
-"""Rule-based multi-agent path when no LLM API key — Điện Máy Xanh AC advisor."""
+"""Rule-based multi-agent path when no LLM API key — refrigerator advisor."""
 
 from __future__ import annotations
 
@@ -22,13 +22,19 @@ def _trace(agent: str, event: str, detail: str = "") -> None:
 def _format_top3(rec: dict[str, Any]) -> str:
     if rec.get("need_more"):
         asks = rec.get("ask") or []
-        return "Để gợi ý máy lạnh sát nhu cầu, em cần thêm:\n" + "\n".join(f"- {a}" for a in asks)
+        return "Để gợi ý tủ lạnh sát nhu cầu, em cần thêm:\n" + "\n".join(f"- {a}" for a in asks)
+    if not rec.get("ok"):
+        return (
+            str(rec.get("message") or "Không tìm thấy mẫu phù hợp với các giới hạn đã chọn.")
+            + " Bạn có muốn tăng ngân sách hoặc nới kích thước không ạ?"
+        )
 
-    lines = ["Em gợi ý **top 3 máy lạnh** phù hợp (theo catalog demo):\n"]
+    lines = ["Em gợi ý **top 3 tủ lạnh** phù hợp từ bảng sản phẩm:\n"]
     for i, p in enumerate(rec.get("top3") or [], 1):
         lines.append(
             f"{i}. **{p['name']}** (`{p['sku']}`) — {p['price_display']}"
-            f" · ~{p.get('room_m2_min')}–{p.get('room_m2_max')}m²"
+            f" · {p.get('usable_capacity_l')} lít"
+            f" · {p.get('household_size_label') or 'chưa có nhãn số người'}"
             f" · {p.get('why', '')}"
             f" · nguồn: {p.get('source')}"
         )
@@ -71,9 +77,12 @@ async def run_offline_multi_agent(
     if mem:
         _trace("lead", "memory", mem[:200])
 
-    _trace("lead", "start", "offline AC advisor")
+    _trace("lead", "start", "offline refrigerator advisor")
 
-    need_faq = any(
+    stock_question = any(
+        k in t for k in ("còn hàng", "con hang", "tồn kho", "ton kho", "khả năng giao hàng")
+    )
+    need_faq = stock_question or any(
         k in t
         for k in (
             "bảo hành",
@@ -84,41 +93,48 @@ async def run_offline_multi_agent(
             "trả góp",
             "đổi",
             "trả",
-            "gas",
             "vệ sinh",
-            "chung cư",
+            "đổi cũ",
         )
     )
     need_escalate = any(k in t for k in ("gặp người", "tư vấn viên", "nhân viên", "khiếu nại"))
     phone_m = re.search(r"0\d{8,10}", user_text.replace(" ", "").replace(".", ""))
     need_crm = bool(phone_m) or any(k in t for k in ("gọi lại", "để lại sđt", "liên hệ em"))
 
-    # Product / recommend path
+    extracted_need = extract_need_from_text(user_text)
     need_product = any(
         k in t
         for k in (
-            "máy lạnh",
-            "may lanh",
-            "điều hòa",
-            "dieu hoa",
-            "m2",
-            "m²",
+            "tủ lạnh",
+            "tu lanh",
+            "side by side",
+            "multi door",
+            "ngăn đá",
+            "ngan da",
+            "dung tích",
+            "dung tich",
+            "lít",
+            "lit",
+            "người",
+            "nguoi",
             "triệu",
             "inverter",
-            "btu",
-            "hp",
-            "phòng",
+            "lấy nước",
+            "làm đá",
+            "đông mềm",
             "gợi ý",
             "so sánh",
             "nên mua",
             "top",
             "rẻ",
-            "êm",
             "tiết kiệm",
         )
-    ) or bool(extract_need_from_text(user_text).get("room_m2")) or bool(
-        extract_need_from_text(user_text).get("budget_vnd")
-    )
+    ) or bool(extracted_need.get("household_size")) or bool(extracted_need.get("capacity_l"))
+    if stock_question and not any(
+        extracted_need.get(key)
+        for key in ("household_size", "capacity_l", "budget_vnd", "max_width_cm")
+    ):
+        need_product = False
 
     async def do_knowledge() -> str | None:
         if not need_faq:
@@ -147,7 +163,7 @@ async def run_offline_multi_agent(
         if not need_product:
             return None
         _trace("lead", "delegate", "→ catalog")
-        need = extract_need_from_text(user_text)
+        need = extracted_need
         from app.agent.tools.runtime import note_tool
 
         note_tool("recommend_top3")
@@ -178,8 +194,8 @@ async def run_offline_multi_agent(
                 "name": customer_name,
                 "phone": phone,
                 "interest": user_text[:200],
-                "budget_vnd": extract_need_from_text(user_text).get("budget_vnd") or 0,
-                "notes": "offline AC advisor",
+                "budget_vnd": extracted_need.get("budget_vnd") or 0,
+                "notes": "offline refrigerator advisor",
                 "score": 0.7 if phone else 0.5,
             }
         )
@@ -201,10 +217,10 @@ async def run_offline_multi_agent(
 
     if not parts:
         parts.append(
-            "Xin chào! Em là SalePilot — trợ lý AI tư vấn **máy lạnh** theo nhu cầu thật "
+            "Xin chào! Em là SalePilot — trợ lý AI tư vấn **tủ lạnh** theo nhu cầu thật "
             "(không chỉ liệt kê thông số).\n"
-            "Anh/chị cho em biết: **phòng bao nhiêu m²** và **ngân sách khoảng bao nhiêu**, "
-            "mình ưu tiên **tiết kiệm điện / êm / giá rẻ** ạ?"
+            "Anh/chị cho em biết: **nhà có bao nhiêu người** và **ngân sách khoảng bao nhiêu**, "
+            "mình ưu tiên **tiết kiệm điện / kiểu tủ / kích thước / bảo quản thực phẩm** ạ?"
         )
 
     if mem and need_product:

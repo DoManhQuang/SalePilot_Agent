@@ -2,7 +2,7 @@
 
 ## Product
 
-AI **so sánh & tư vấn máy lạnh theo nhu cầu thật**: need discovery → catalog rank → trade-off → top 3. Guardrail: numbers only from tools.
+AI **so sánh & tư vấn tủ lạnh theo nhu cầu thật**: need discovery → catalog rank → trade-off → top 3. Guardrail: numbers only from tools; never infer stock.
 
 ## Modules
 
@@ -20,6 +20,8 @@ User → gateway → run_agent (or offline) → catalog/knowledge tools → Viet
 
 ## Data
 
-- `data/products.json` — AC SKUs  
-- `data/faq.json` — install/warranty/installment  
-- `data/need_scenarios.json` — test cases  
+- `data/products.json` — offline snapshot of all 1,692 `category_code=38` refrigerator SKUs
+- `scripts/import_refrigerators.py` — deterministic public Google Sheet importer
+- `data/PRODUCT_SOURCE.md` — source and normalization assumptions
+- `data/faq.json` — refrigerator guidance and explicit source limitations
+- `data/need_scenarios.json` — refrigerator need cases

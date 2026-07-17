@@ -15,7 +15,10 @@ async def search_knowledge(query: str) -> str:
         return json.dumps(
             {
                 "results": [],
-                "fallback": "Showroom 9:00–21:00, 123 Nguyễn Trãi, Thanh Xuân, HN. Giao HN/HCM 1–3 ngày. Đổi 7 ngày lỗi NSX.",
+                "fallback": (
+                    "Không có thông tin này trong knowledge base hiện tại. "
+                    "Cần xác nhận chính sách cửa hàng/hãng trước khi trả lời."
+                ),
             },
             ensure_ascii=False,
         )

@@ -21,20 +21,10 @@ async def main() -> None:
     await init_db()
     products = json.loads((DATA / "products.json").read_text(encoding="utf-8"))
     async with async_session() as session:
-        # Always refresh product table from JSON (catalog source of truth for SQL mirror)
+        # Product details live in the JSON snapshot. Clear the legacy SQL mirror so it
+        # cannot expose stale AC stock or prices absent from the refrigerator sheet.
         await session.execute(delete(Product))
-        for p in products:
-            session.add(
-                Product(
-                    sku=p["sku"],
-                    name=p["name"],
-                    category=p.get("category", "may_lanh"),
-                    price_vnd=p["price_vnd"],
-                    stock=p["stock"],
-                    description=p.get("description", ""),
-                )
-            )
-        print(f"Seeded {len(products)} products (refreshed)")
+        print(f"Loaded {len(products)} refrigerator products from JSON snapshot")
 
         lead_exists = (await session.execute(select(Lead))).scalars().first()
         if not lead_exists:
@@ -43,22 +33,22 @@ async def main() -> None:
                     name="Anh Minh",
                     phone="0901234567",
                     channel="web",
-                    interest="Máy lạnh phòng ngủ 12m2",
-                    budget_vnd=10000000,
+                    interest="Tủ lạnh cho gia đình 4 người",
+                    budget_vnd=15000000,
                     status="qualified",
                     score=0.7,
-                    notes="Sample seed AC",
+                    notes="Sample seed refrigerator",
                 ),
                 Lead(
                     name="Chị Lan",
                     phone="0912345678",
                     channel="zalo",
                     external_id="zalo-demo-001",
-                    interest="Máy lạnh phòng khách 25m2",
-                    budget_vnd=18000000,
+                    interest="Tủ lạnh Multi Door cho gia đình 5 người",
+                    budget_vnd=25000000,
                     status="new",
                     score=0.5,
-                    notes="Sample seed AC",
+                    notes="Sample seed refrigerator",
                 ),
             ]
             session.add_all(samples)

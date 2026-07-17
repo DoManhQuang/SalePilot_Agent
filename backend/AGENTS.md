@@ -19,7 +19,7 @@ source .venv/bin/activate   # or: python3 -m venv .venv && pip install -r requir
 python -m scripts.seed_db
 python -m scripts.ingest_kb
 uvicorn app.main:app --reload --port 8000
-python -m scripts.simulate_zalo --text "Còn sofa xám? Ship HN?"
+python -m scripts.simulate_zalo --text "Gia đình 4 người cần tủ lạnh dưới 15 triệu"
 ```
 
 From repo root: `./scripts/verify.sh`
@@ -36,11 +36,12 @@ From repo root: `./scripts/verify.sh`
 | `app/agent/skills/` | Portable product skills |
 | `app/channels/zalo/` | Webhook + Mock OA client |
 | `app/api/` | chat, leads, products, outbox |
-| `data/products.json`, `data/faq.json` | Seed content |
+| `data/products.json`, `data/faq.json` | Refrigerator snapshot + guidance |
+| `scripts/import_refrigerators.py` | Refresh category-code-38 snapshot from Google Sheet |
 
 ## Rules
 
 - Keep offline multi-agent working without keys.
 - Sub-agents: tool whitelist only; return short summaries to Lead.
-- Do not invent prices — use catalog tools / seed data.
+- Do not invent prices or stock — use catalog tools; the source has no stock column.
 - After changes: run `./scripts/verify.sh` from repo root.

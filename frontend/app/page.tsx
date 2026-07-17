@@ -7,10 +7,10 @@ export default function HomePage() {
         <span className="badge">VAIC 2026 · Năng suất SME · Điện Máy Xanh</span>
         <h1>SalePilot</h1>
         <p>
-          Trợ lý AI <strong>so sánh &amp; tư vấn máy lạnh theo nhu cầu thật</strong> — hiểu ngân
-          sách, m² phòng, ưu tiên (tiết kiệm điện / êm / giá), hỏi ngược khi thiếu thông tin, đề
+          Trợ lý AI <strong>so sánh &amp; tư vấn tủ lạnh theo nhu cầu thật</strong> — hiểu số người,
+          ngân sách, dung tích, kiểu tủ và kích thước chỗ đặt, hỏi ngược khi thiếu thông tin, đề
           xuất <strong>top 3</strong> kèm trade-off. Multi-agent: Lead · Catalog · Knowledge · CRM.
-          Không bịa giá/tồn — mọi số liệu từ catalog.
+          Không bịa giá/tồn — mọi số liệu từ Google Sheet category_code 38.
         </p>
         <div className="cta-row">
           <Link className="btn" href="/chat">
@@ -21,7 +21,7 @@ export default function HomePage() {
           </Link>
         </div>
         <p className="muted" style={{ marginTop: 16 }}>
-          Thử: “Phòng ngủ 12m², dưới 10 triệu, muốn êm và tiết kiệm điện”
+          Thử: “Gia đình 4 người, dưới 15 triệu, cần tủ lạnh inverter, ngang tối đa 70 cm”
         </p>
       </div>
     </main>

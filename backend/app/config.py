@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     zalo_verify_mode: str = "off"
 
     shop_name: str = "SalePilot Điện Máy"
-    shop_category: str = "may_lanh"
+    shop_category: str = "tu_lanh"
 
     memory_enabled: bool = True
     auto_skill_write: bool = False

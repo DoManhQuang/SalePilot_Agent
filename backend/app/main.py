@@ -38,8 +38,8 @@ def create_app() -> FastAPI:
     settings = get_settings()
     app = FastAPI(
         title="SalePilot",
-        description="AI so sánh & tư vấn máy lạnh theo nhu cầu — VAIC Điện Máy Xanh / SME",
-        version="0.5.1",
+        description="AI so sánh & tư vấn tủ lạnh theo nhu cầu — VAIC Điện Máy Xanh / SME",
+        version="0.6.0",
         lifespan=lifespan,
     )
     app.add_middleware(

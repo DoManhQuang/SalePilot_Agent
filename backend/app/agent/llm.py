@@ -66,10 +66,10 @@ class _FallbackModel(BaseChatModel):
 
     def _reply(self, text: str) -> str:
         t = (text or "").lower()
-        if any(k in t for k in ("sofa", "giường", "giuong", "bàn", "ban", "nệm", "nem", "giá", "gia")):
+        if any(k in t for k in ("tủ lạnh", "tu lanh", "dung tích", "dung tich", "giá", "gia")):
             return (
-                "Chào bạn! Em là SalePilot của Nhà Xanh Home. "
-                "Bạn đang tìm sofa, giường hay bàn ạ? Cho em xin ngân sách để gợi ý mẫu phù hợp."
+                "Chào bạn! Em là SalePilot Điện Máy. "
+                "Nhà mình có bao nhiêu người và ngân sách khoảng bao nhiêu để em gợi ý tủ lạnh phù hợp ạ?"
             )
         if any(k in t for k in ("giao", "ship", "đổi", "trả", "bảo hành", "bao hanh")):
             return (
@@ -79,6 +79,6 @@ class _FallbackModel(BaseChatModel):
         if any(k in t for k in ("người", "tư vấn viên", "nhân viên", "gặp")):
             return "Em đã ghi nhận yêu cầu gặp tư vấn viên. Team sẽ liên hệ trong giờ 9:00–21:00 ạ."
         return (
-            "Xin chào! Em là SalePilot — multi-agent CSKH/sales của Nhà Xanh Home. "
-            "Em hỗ trợ tư vấn nội thất, báo giá, tạo lead. Bạn cần gì ạ?"
+            "Xin chào! Em là SalePilot — trợ lý multi-agent tư vấn tủ lạnh. "
+            "Em hỗ trợ so sánh dung tích, kích thước, giá và công nghệ bảo quản. Bạn cần gì ạ?"
         )

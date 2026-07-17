@@ -1,42 +1,42 @@
 <evaluation>
   <qa_pair>
-    <question>A shopper needs the least expensive in-stock variable-speed unit for a compact bedroom whose supported area ends at 13 square metres. Search candidates, inspect the matching product, and return only its SKU.</question>
-    <answer>AC-015</answer>
+    <question>A four-person household has a 15,000,000 VND budget, wants an energy-saving bottom-freezer refrigerator, and has at most 70 cm of installation width. Request the ranked shortlist and return only the first SKU.</question>
+    <answer>1751097000066</answer>
   </qa_pair>
   <qa_pair>
-    <question>For a 12 square metre bedroom with a 10,000,000 VND ceiling that values low noise and lower electricity use, request the ranked shortlist and validate its first candidate against its detail. Return only the first-ranked SKU.</question>
-    <answer>AC-002</answer>
+    <question>Search currently priced Mini refrigerators suitable for one or two people, inspect the cheapest result, and return only its SKU.</question>
+    <answer>1751097000037</answer>
   </qa_pair>
   <qa_pair>
-    <question>Using the same 12 square metre, 10,000,000 VND quiet-and-efficient shortlist, compare all returned choices. Which SKU is the cheapest? Return only the SKU.</question>
-    <answer>AC-003</answer>
+    <question>Compare Hisense SKUs 1751097000182 and 1751097000181. One is a top-freezer model and the other is Side by Side. Return only the SKU with the lower current price.</question>
+    <answer>1751097000182</answer>
   </qa_pair>
   <qa_pair>
-    <question>Explore the bedroom-capable catalog entries, inspect the lowest-noise candidates, and identify the unit with the smallest published noise number. Return only its SKU.</question>
-    <answer>AC-004</answer>
+    <question>Page through every currently priced refrigerator suitable for four people and costing no more than 15,000,000 VND. Which SKU has the largest usable capacity? Return only the SKU.</question>
+    <answer>1751097000131</answer>
   </qa_pair>
   <qa_pair>
-    <question>For the two 1.5 HP inverter models intended for roughly 15-22 square metres from the Japanese brands in the catalog, compare their published noise values. Return only the quieter SKU.</question>
-    <answer>AC-006</answer>
+    <question>Search currently priced refrigerators for a three-person household that have an energy-saving technology. Return only the SKU of the least expensive result.</question>
+    <answer>1751097000005</answer>
   </qa_pair>
   <qa_pair>
-  <question>Use the policy knowledge base to infer the nominal cooling capacity recommended for a 25-35 square metre room. Return only the BTU value in the source's dotted Vietnamese-number format.</question>
-    <answer>18.000 BTU</answer>
+    <question>Search currently priced Side by Side refrigerators for more than five people with the phrase "external water dispenser". Retain only results whose external_water_dispenser field is true, compare their prices, and return only the cheapest SKU.</question>
+    <answer>1751097000109</answer>
   </qa_pair>
   <qa_pair>
-    <question>Find the policy entry that explains zero-percent card financing and check its identifier. Return only the FAQ identifier.</question>
+    <question>Use the guidance search to find the entry explaining whether SalePilot knows a refrigerator's stock availability. Return only that FAQ identifier.</question>
     <answer>faq-05</answer>
   </qa_pair>
   <qa_pair>
-    <question>Compare the available 2 HP inverter choices for a larger living room and find the lowest-priced one. Return only its SKU.</question>
-    <answer>AC-013</answer>
+    <question>Inspect SKU 1751097000182 and subtract its sale price from its original price. Return only the discount in VND as an integer without separators.</question>
+    <answer>530000</answer>
   </qa_pair>
   <qa_pair>
-    <question>Search catalog promotions and inspect the high-capacity candidate that includes a no-cost pre-installation survey. Return only its SKU.</question>
-    <answer>AC-011</answer>
+    <question>For the four-person, 15,000,000 VND, energy-saving bottom-freezer shortlist constrained to 70 cm width, compare all three recommendations. Which SKU has the largest absolute discount from original to sale price? Return only the SKU.</question>
+    <answer>1751097000058</answer>
   </qa_pair>
   <qa_pair>
-    <question>Use the delivery-and-installation policy entry to determine the stated city delivery window for Hanoi and Ho Chi Minh City. Return only the duration exactly as written.</question>
-    <answer>1–3 ngày</answer>
+    <question>Compare the total count of all category-code-38 refrigerator rows with the total count when priced_only is true. How many source rows lack a current price? Return only the integer.</question>
+    <answer>1440</answer>
   </qa_pair>
 </evaluation>

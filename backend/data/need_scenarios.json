@@ -1,32 +1,55 @@
 [
   {
     "id": "sc-01",
-    "user": "Phòng ngủ 12m2, dưới 10 triệu, muốn êm và tiết kiệm điện",
-    "expect_slots": {"room_m2": 12, "budget_vnd": 10000000, "priority": ["em", "tiet_kiem_dien"]}
+    "user": "Gia đình 4 người, dưới 15 triệu, cần tủ lạnh tiết kiệm điện",
+    "expect_slots": {
+      "household_size": 4,
+      "budget_vnd": 15000000,
+      "priority": ["tiet_kiem_dien"]
+    }
   },
   {
     "id": "sc-02",
-    "user": "Phòng khách khoảng 28m2, ngân sách 18 triệu, làm lạnh mạnh",
-    "expect_slots": {"room_m2": 28, "budget_vnd": 18000000, "priority": ["cong_suat_lon"]}
+    "user": "Nhà 5 người cần tủ Multi Door khoảng 500 lít, ngân sách 25 triệu",
+    "expect_slots": {
+      "household_size": 5,
+      "capacity_l": 500,
+      "budget_vnd": 25000000,
+      "preferred_styles": ["Multi Door"]
+    }
   },
   {
     "id": "sc-03",
-    "user": "Căn hộ thuê, càng rẻ càng tốt, phòng 10m2",
-    "expect_slots": {"room_m2": 10, "budget_vnd": 7000000, "priority": ["gia_re"]}
+    "user": "Chỗ đặt ngang tối đa 70 cm, gia đình 4 người, dưới 15 triệu",
+    "expect_slots": {
+      "household_size": 4,
+      "budget_vnd": 15000000,
+      "max_width_cm": 70
+    }
   },
   {
     "id": "sc-04",
-    "user": "Bảo hành máy lạnh thế nào?",
-    "expect_slots": {"intent": "faq"}
+    "user": "Bảng có biết tủ lạnh còn hàng không?",
+    "expect_slots": {
+      "intent": "faq"
+    }
   },
   {
     "id": "sc-05",
-    "user": "So sánh giúp 2–3 máy inverter 1HP khoảng 9–12 triệu",
-    "expect_slots": {"budget_vnd": 12000000, "hp": 1.0, "priority": ["tiet_kiem_dien"]}
+    "user": "So sánh tủ Side by Side có lấy nước ngoài cho hơn 5 người",
+    "expect_slots": {
+      "household_size": 6,
+      "preferred_styles": ["Tủ lớn - Side by Side"],
+      "priority": ["lay_nuoc_ngoai"]
+    }
   },
   {
     "id": "sc-06",
-    "user": "Muốn máy lọc khí, phòng ngủ 14m2",
-    "expect_slots": {"room_m2": 14, "priority": ["loc_khi"]}
+    "user": "Cần tủ ngăn đá dưới có đông mềm và giữ tươi, nhà 3 người",
+    "expect_slots": {
+      "household_size": 3,
+      "preferred_styles": ["Ngăn đá dưới"],
+      "priority": ["dong_mem", "bao_quan"]
+    }
   }
 ]

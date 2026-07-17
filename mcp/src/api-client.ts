@@ -4,7 +4,11 @@ export const ProductSchemaOutput = z
   .object({
     sku: z.string(),
     name: z.string(),
-    price_vnd: z.number(),
+    category_code: z.literal(38),
+    price_vnd: z.number().nullable(),
+    price_display: z.string(),
+    style: z.string().nullable(),
+    usable_capacity_l: z.number().nullable(),
   })
   .passthrough();
 
@@ -32,6 +36,7 @@ export const RecommendationSchema = z
   .object({
     ok: z.boolean(),
     need_more: z.boolean().optional(),
+    message: z.string().optional(),
     top3: z.array(ProductSchemaOutput).optional(),
     tradeoffs: z.array(z.string()).optional(),
     ask: z.array(z.string()).optional(),
@@ -110,9 +115,15 @@ export class SalePilotApiClient {
   async searchProducts(params: {
     query?: string;
     budget_vnd?: number;
-    room_m2?: number;
-    inverter?: boolean;
+    household_size?: number;
+    min_capacity_l?: number;
+    max_width_cm?: number;
+    max_height_cm?: number;
+    max_depth_cm?: number;
+    energy_saving?: boolean;
     brand?: string;
+    style?: string;
+    priced_only?: boolean;
     limit?: number;
     offset?: number;
   }): Promise<ProductPage> {
@@ -128,9 +139,14 @@ export class SalePilotApiClient {
   }
 
   async recommendProducts(params: {
-    room_m2?: number;
+    household_size?: number;
+    capacity_l?: number;
     budget_vnd?: number;
     priorities?: string[];
+    preferred_styles?: string[];
+    max_width_cm?: number;
+    max_height_cm?: number;
+    max_depth_cm?: number;
     force?: boolean;
     free_text?: string;
   }): Promise<Recommendation> {

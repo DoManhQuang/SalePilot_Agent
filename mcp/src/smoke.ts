@@ -50,26 +50,31 @@ async function main(): Promise<void> {
     }
 
     await callSuccessfulTool(client, "salepilot_search_products", {
-      query: "inverter",
+      query: "ngăn đá dưới",
+      household_size: 4,
+      budget_vnd: 15_000_000,
+      priced_only: true,
       limit: 2,
       response_format: "json",
     });
     await callSuccessfulTool(client, "salepilot_get_product", {
-      sku: "AC-002",
+      sku: "1751097000182",
       response_format: "json",
     });
     await callSuccessfulTool(client, "salepilot_compare_products", {
-      skus: ["AC-002", "AC-010"],
+      skus: ["1751097000182", "1751097000181"],
       response_format: "json",
     });
     await callSuccessfulTool(client, "salepilot_recommend_products", {
-      room_m2: 12,
-      budget_vnd: 10_000_000,
-      priorities: ["em", "tiet_kiem_dien"],
+      household_size: 4,
+      budget_vnd: 15_000_000,
+      priorities: ["tiet_kiem_dien"],
+      preferred_styles: ["Ngăn đá dưới"],
+      max_width_cm: 70,
       response_format: "json",
     });
     await callSuccessfulTool(client, "salepilot_search_faq", {
-      query: "lắp đặt",
+      query: "tồn kho",
       limit: 2,
       response_format: "json",
     });
@@ -79,8 +84,8 @@ async function main(): Promise<void> {
         confirmed: true,
         name: "MCP Smoke",
         phone: "0909999888",
-        interest: "Máy lạnh inverter 1 HP",
-        budget_vnd: 10_000_000,
+        interest: "Tủ lạnh ngăn đá dưới cho gia đình 4 người",
+        budget_vnd: 15_000_000,
         response_format: "json",
       });
     } else {
@@ -89,7 +94,7 @@ async function main(): Promise<void> {
         arguments: {
           confirmed: false,
           phone: "0909999888",
-          interest: "Máy lạnh inverter 1 HP",
+          interest: "Tủ lạnh cho gia đình 4 người",
           response_format: "json",
         },
       });

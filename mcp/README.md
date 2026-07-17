@@ -1,6 +1,6 @@
 # SalePilot MCP Server
 
-Local stdio MCP server for the SalePilot air-conditioner advisor. It exposes catalog facts, comparison, need-based top-3 recommendations, policy FAQ, and a consent-gated CRM lead write for compatible MCP clients.
+Local stdio MCP server for the SalePilot refrigerator advisor. It exposes the provided Google Sheet's `Tủ Lạnh` tab (`category_code=38`), comparison, need-based top-3 recommendations, guidance FAQ, and a consent-gated CRM lead write.
 
 ```text
 MCP client --stdio--> Node.js MCP server --HTTP--> SalePilot FastAPI /mcp endpoints
@@ -45,14 +45,16 @@ The bridge rejects non-local API hosts by default. Set `SALEPILOT_ALLOW_REMOTE_A
 
 | Tool | Behavior |
 | --- | --- |
-| `salepilot_search_products` | Paginated catalog search by keyword, price, room area, inverter, or brand |
+| `salepilot_search_products` | Paginated search by keyword, price, household size, capacity, dimensions, brand, or style |
 | `salepilot_get_product` | Full catalog detail for one SKU |
-| `salepilot_compare_products` | Compare 2-5 SKUs with catalog trade-offs |
+| `salepilot_compare_products` | Compare 2-5 SKUs by current price, capacity, width, and discount |
 | `salepilot_recommend_products` | Deterministic diversified top-3 recommendation or clarification questions |
 | `salepilot_search_faq` | Paginated policy FAQ search |
 | `salepilot_create_lead` | Creates a CRM lead after explicit customer confirmation |
 
 Read tools support `response_format: "markdown" | "json"` and always provide structured MCP content.
+
+The snapshot contains 1,692 refrigerator SKUs; 252 have a current source price and are eligible for recommendation. Rows without price remain searchable for specification lookup. The sheet has no stock column, so no tool claims availability.
 
 ## Lead write security
 
@@ -108,4 +110,4 @@ npx @modelcontextprotocol/inspector \
 
 ## Evaluations
 
-`evaluations.xml` contains ten independent, read-only evaluation questions with stable answers derived from the demo catalog and FAQ data.
+`evaluations.xml` contains ten independent, read-only evaluation questions with stable answers derived from the checked-in category-code-38 snapshot and FAQ data.

@@ -1,10 +1,10 @@
 # Pivot playbook (when VAIC problem drops 17/07 11:00)
 
 1. **Keep** multi-agent graph + channels + FE.  
-2. **Change** `prompts.py` + `skills/*/SKILL.md` for domain.  
-3. **Swap** `data/products.json` + `faq.json` (or add new tools).  
-4. **Add** 1–2 tools under a new sub-agent if needed; register in `SUBAGENTS`.  
-5. **Update** DEMO_SCRIPT + 1 architecture slide.  
-6. **Redeploy** — do not rewrite FE.
+2. **Establish the source contract**: IDs, required fields, null semantics, provenance.
+3. **Change together**: catalog ranking, API/MCP schemas, prompts, offline path, skills and UI copy.
+4. **Generate** an offline-safe snapshot; never require a live sheet at request time.
+5. **Replace** FAQ/test/evaluation evidence for the new domain.
+6. **Rebuild and verify** backend, frontend and MCP before redeploying.
 
 Max effort target: 1–2 hours to vertical-fit.

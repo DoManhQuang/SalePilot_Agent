@@ -1,16 +1,16 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { chatOnce, type TraceStep } from "@/lib/api";
 
 type Msg = { role: "user" | "assistant"; content: string };
 
 const CHIPS = [
-  "Phòng ngủ 12m2, dưới 10 triệu, muốn êm và tiết kiệm điện",
-  "Phòng khách 28m2, ngân sách 18 triệu, làm lạnh mạnh",
-  "So sánh giúp máy inverter 1HP khoảng 9–12 triệu",
-  "Bảo hành máy lạnh thế nào?",
-  "Căn hộ thuê, càng rẻ càng tốt, phòng 10m2",
+  "Gia đình 4 người, dưới 15 triệu, cần tủ lạnh tiết kiệm điện",
+  "Nhà 5 người cần tủ Multi Door khoảng 500 lít, ngân sách 25 triệu",
+  "Chỗ đặt ngang tối đa 70 cm, nhà 4 người, dưới 15 triệu",
+  "Bảng có biết tủ lạnh còn hàng không?",
+  "So sánh tủ Side by Side có lấy nước ngoài cho hơn 5 người",
 ];
 
 function agentClass(name: string) {
@@ -20,14 +20,14 @@ function agentClass(name: string) {
 }
 
 export default function ChatPage() {
-  const externalId = useMemo(() => `web-${Math.random().toString(36).slice(2, 10)}`, []);
+  const [externalId, setExternalId] = useState("");
   const [input, setInput] = useState("");
   const [msgs, setMsgs] = useState<Msg[]>([
     {
       role: "assistant",
       content:
-        "Chào bạn! Em là SalePilot — tư vấn máy lạnh theo nhu cầu thật (không chỉ bảng thông số). " +
-        "Cho em biết phòng khoảng bao nhiêu m² và ngân sách nhé?",
+        "Chào bạn! Em là SalePilot — tư vấn tủ lạnh theo nhu cầu thật từ bảng sản phẩm. " +
+        "Cho em biết nhà có bao nhiêu người, ngân sách và kích thước chỗ đặt nhé?",
     },
   ]);
   const [trace, setTrace] = useState<TraceStep[]>([]);
@@ -37,9 +37,13 @@ export default function ChatPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  useEffect(() => {
+    setExternalId(`web-${crypto.randomUUID()}`);
+  }, []);
+
   async function send(textIn?: string) {
     const text = (textIn ?? input).trim();
-    if (!text || loading) return;
+    if (!text || loading || !externalId) return;
     setInput("");
     setError("");
     setMsgs((m) => [...m, { role: "user", content: text }]);
@@ -67,12 +71,12 @@ export default function ChatPage() {
     <main className="grid2">
       <section className="card">
         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-          <strong>Tư vấn máy lạnh</strong>
-          <span className="muted">{externalId}</span>
+          <strong>Tư vấn tủ lạnh</strong>
+          <span className="muted">{externalId || "Đang tạo phiên…"}</span>
         </div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
           {CHIPS.map((c) => (
-            <button key={c} type="button" className="btn ghost" style={{ fontSize: 12, padding: "6px 10px" }} onClick={() => send(c)} disabled={loading}>
+            <button key={c} type="button" className="btn ghost" style={{ fontSize: 12, padding: "6px 10px" }} onClick={() => send(c)} disabled={loading || !externalId}>
               {c.length > 42 ? c.slice(0, 40) + "…" : c}
             </button>
           ))}
@@ -88,12 +92,13 @@ export default function ChatPage() {
         <div style={{ display: "flex", gap: 8 }}>
           <input
             className="input"
+            name="message"
             value={input}
             placeholder="Mô tả nhu cầu bằng tiếng Việt…"
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && send()}
           />
-          <button className="btn" onClick={() => send()} disabled={loading}>
+          <button className="btn" onClick={() => send()} disabled={loading || !externalId}>
             Gửi
           </button>
         </div>

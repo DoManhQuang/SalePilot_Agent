@@ -9,7 +9,10 @@ import urllib.request
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--text", default="Shop còn sofa xám dưới 15 triệu không? Ship HN thế nào?")
+    parser.add_argument(
+        "--text",
+        default="Gia đình 4 người cần tủ lạnh dưới 15 triệu, ngang tối đa 70 cm",
+    )
     parser.add_argument("--user-id", default="zalo-demo-001")
     parser.add_argument("--url", default="http://127.0.0.1:8000/webhooks/zalo")
     args = parser.parse_args()

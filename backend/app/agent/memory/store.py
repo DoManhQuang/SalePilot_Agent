@@ -154,7 +154,7 @@ async def maybe_extract_from_text(channel: str, external_id: str, text: str) -> 
     budget_m = re.search(r"(\d+)\s*(triệu|tr|m)", text.lower())
     interest = ""
     t = text.lower()
-    for kw in ("sofa", "giường", "giuong", "bàn", "nệm", "đèn", "tủ", "kệ"):
+    for kw in ("tủ lạnh", "tu lanh", "side by side", "multi door", "ngăn đá", "ngan da"):
         if kw in t:
             interest = kw
             break

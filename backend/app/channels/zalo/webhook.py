@@ -78,7 +78,7 @@ async def zalo_webhook(
     if event.event_name == "follow":
         reply = (
             f"Cảm ơn bạn đã follow {settings.shop_name}! "
-            "Em là SalePilot — gõ tên sản phẩm (sofa, giường, bàn…) để em tư vấn nhé."
+            "Em là SalePilot — cho em biết số người, ngân sách hoặc kiểu tủ lạnh cần tìm nhé."
         )
         client = get_zalo_client()
         await client.send_text(mapped["external_id"], reply)

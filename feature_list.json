@@ -21,13 +21,13 @@
       "user_visible_behavior": "A product+policy question yields reply with used_agents including lead and at least one specialist; Agent Trace shows delegate steps.",
       "status": "passing",
       "verification": [
-        "POST /chat with sofa + ship message (no API key ok).",
+        "POST /chat with refrigerator need + stock/source question (no API key ok).",
         "Assert used_agents contains lead and catalog (and knowledge if ship mentioned).",
         "Assert used_tools non-empty offline (search_products, search_knowledge).",
         "Assert trace has lead delegate and finalize events."
       ],
       "evidence": [
-        "2026-07-17 offline run_agent: agents lead,catalog,knowledge; tools search_products,search_knowledge; reply includes SF-001 12.500.000đ"
+        "2026-07-17 refrigerator smoke: catalog top-3 uses category_code=38 SKUs and stock FAQ routes to knowledge without claiming availability."
       ],
       "notes": "LLM path uses graph.py; offline path uses offline.py"
     },
@@ -70,7 +70,7 @@
       "area": "frontend",
       "title": "Dashboard shows leads and Zalo inbox",
       "user_visible_behavior": "Owner opens /dashboard and sees seeded leads + conversations + Zalo panel.",
-      "status": "in_progress",
+      "status": "not_started",
       "verification": [
         "npm run dev frontend.",
         "Open /dashboard with backend up.",
@@ -88,7 +88,7 @@
       "status": "not_started",
       "verification": [
         "Open /chat.",
-        "Send sofa+ship message.",
+        "Send refrigerator need + stock/source message.",
         "Confirm badges + trace items render."
       ],
       "evidence": [],
@@ -137,11 +137,30 @@
       "notes": "Code must be developed primarily during 48h for AI-Native oath"
     },
     {
-      "id": "mcp-001",
+      "id": "fridge-001",
       "priority": 9,
+      "area": "catalog",
+      "title": "Google Sheet refrigerator catalog migration",
+      "user_visible_behavior": "SalePilot advises on Tủ Lạnh category_code=38 from the provided Google Sheet, recommends only priced rows, keeps unpriced rows searchable, and never claims stock availability.",
+      "status": "passing",
+      "verification": [
+        "python -m scripts.import_refrigerators writes a deterministic 1,692-row snapshot with 252 currently priced rows.",
+        "./init.sh and ./scripts/verify.sh pass with category_code=38, hard budget, dimension, stock FAQ, order validation, MCP API, and memory regression checks.",
+        "Frontend build, MCP build, MCP stdio smoke, and browser chat verification pass."
+      ],
+      "evidence": [
+        "2026-07-17 sha256 backend/data/products.json = e4a8df9d43e33b058fb68d322ab7ff40b0c0318b775518f0bfc0c55f132e9b2a; jq length=1692, category mismatches=0, priced=252.",
+        "2026-07-17 ./init.sh PASS; ./scripts/verify.sh PASS after regressions for hard budget no-match, unaccented budget parse, decimal dimensions, external water search, stock FAQ routing, and order quantity validation.",
+        "2026-07-17 browser /chat verified desktop and mobile screenshots under /tmp/opencode; console clean; POST /chat 200; top-3 refrigerator reply and Agent Trace visible."
+      ],
+      "notes": "Implementation is on feature/refrigerator-catalog; main and dev remain base-only by branch policy. Source sheet has no stock column and no product-name column."
+    },
+    {
+      "id": "mcp-001",
+      "priority": 10,
       "area": "mcp",
       "title": "Local SalePilot MCP server",
-      "user_visible_behavior": "A local MCP client can search and compare the AC catalog, receive top-3 recommendations and policy FAQ results, and create a CRM lead only after explicit consent plus a configured write token.",
+      "user_visible_behavior": "A local MCP client can search and compare the refrigerator catalog, receive top-3 recommendations and guidance FAQ results, and create a CRM lead only after explicit consent plus a configured write token.",
       "status": "passing",
       "verification": [
         "./scripts/verify.sh validates the FastAPI /mcp catalog, recommendation, FAQ, and token-protected lead contract.",
@@ -151,9 +170,10 @@
       "evidence": [
         "2026-07-17 ./scripts/verify.sh PASS, including verify_mcp.py.",
         "2026-07-17 MCP smoke PASS: six tools discovered and invoked via official SDK stdio client.",
+        "2026-07-17 MCP refrigerator checks PASS: top3 [1751097000066, 1751097000058, 1751097000065], external-water cheapest 1751097000109, hard-budget no-match ok=false.",
         "2026-07-17 isolated SQLite write smoke created a channel=mcp lead only with matching MCP_WRITE_TOKEN / SALEPILOT_MCP_WRITE_TOKEN."
       ],
-      "notes": "Implementation is on feature/salepilot-mcp. main and dev remain base-only by branch policy."
+      "notes": "Base MCP implementation is on feature/salepilot-mcp; refrigerator contract updates are on feature/refrigerator-catalog. main and dev remain base-only by branch policy."
     }
   ]
 }

@@ -47,9 +47,14 @@ class ProductComparisonRequest(BaseModel):
 
 
 class RecommendationRequest(BaseModel):
-    room_m2: float | None = Field(default=None, gt=0, le=500)
+    household_size: int | None = Field(default=None, ge=1, le=20)
+    capacity_l: int | None = Field(default=None, ge=1, le=2_000)
     budget_vnd: int | None = Field(default=None, ge=0, le=1_000_000_000)
-    priorities: list[str] = Field(default_factory=list, max_length=6)
+    priorities: list[str] = Field(default_factory=list, max_length=7)
+    preferred_styles: list[str] = Field(default_factory=list, max_length=5)
+    max_width_cm: float | None = Field(default=None, gt=0, le=500)
+    max_height_cm: float | None = Field(default=None, gt=0, le=500)
+    max_depth_cm: float | None = Field(default=None, gt=0, le=500)
     force: bool = False
     free_text: str = Field(default="", max_length=500)
 
@@ -115,19 +120,31 @@ def require_mcp_write_token(
 async def list_mcp_products(
     query: str = Query(default="", max_length=200),
     budget_vnd: int | None = Query(default=None, ge=0, le=1_000_000_000),
-    room_m2: float | None = Query(default=None, gt=0, le=500),
-    inverter: bool | None = None,
+    household_size: int | None = Query(default=None, ge=1, le=20),
+    min_capacity_l: int | None = Query(default=None, ge=1, le=2_000),
+    max_width_cm: float | None = Query(default=None, gt=0, le=500),
+    max_height_cm: float | None = Query(default=None, gt=0, le=500),
+    max_depth_cm: float | None = Query(default=None, gt=0, le=500),
+    energy_saving: bool | None = None,
     brand: str = Query(default="", max_length=80),
+    style: str = Query(default="", max_length=100),
+    priced_only: bool = False,
     limit: int = Query(default=20, ge=1, le=50),
     offset: int = Query(default=0, ge=0),
 ) -> PageOut:
     results = search(
         query,
         budget_vnd=budget_vnd,
-        room_m2=room_m2,
-        inverter=inverter,
+        household_size=household_size,
+        min_capacity_l=min_capacity_l,
+        max_width_cm=max_width_cm,
+        max_height_cm=max_height_cm,
+        max_depth_cm=max_depth_cm,
+        energy_saving=energy_saving,
         brand=brand,
-        limit=50,
+        style=style,
+        priced_only=priced_only,
+        limit=None,
     )
     return _page(results, offset, limit)
 
@@ -154,9 +171,14 @@ async def create_mcp_product_comparison(request: ProductComparisonRequest) -> di
 @router.post("/recommendations")
 async def create_mcp_recommendation(request: RecommendationRequest) -> dict[str, Any]:
     need = recommendation_need(
-        room_m2=request.room_m2,
+        household_size=request.household_size,
+        capacity_l=request.capacity_l,
         budget_vnd=request.budget_vnd,
         priorities=request.priorities,
+        preferred_styles=request.preferred_styles,
+        max_width_cm=request.max_width_cm,
+        max_height_cm=request.max_height_cm,
+        max_depth_cm=request.max_depth_cm,
         force=request.force,
         free_text=request.free_text,
     )

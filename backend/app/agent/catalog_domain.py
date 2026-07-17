@@ -1,4 +1,4 @@
-"""Deep catalog domain for AC — pure functions, no LangChain."""
+"""Refrigerator catalog domain backed by the category_code=38 sheet snapshot."""
 
 from __future__ import annotations
 
@@ -15,274 +15,453 @@ DATA = Path(__file__).resolve().parents[2] / "data" / "products.json"
 def load_products() -> tuple[dict[str, Any], ...]:
     if not DATA.exists():
         return tuple()
-    return tuple(json.loads(DATA.read_text(encoding="utf-8")))
+    payload = json.loads(DATA.read_text(encoding="utf-8"))
+    return tuple(payload if isinstance(payload, list) else [])
 
 
 def reload_products() -> None:
     load_products.cache_clear()
 
 
-def _fmt_price(v: int) -> str:
-    return f"{int(v):,}".replace(",", ".") + "đ"
+def _fmt_price(value: int | None) -> str:
+    if value is None:
+        return "Chưa có giá"
+    return f"{int(value):,}".replace(",", ".") + "đ"
 
 
-def product_public(p: dict[str, Any]) -> dict[str, Any]:
+def _summary(p: dict[str, Any]) -> dict[str, Any]:
     return {
-        "sku": p.get("sku"),
-        "name": p.get("name"),
+        "sku": str(p.get("sku") or ""),
+        "model_code": str(p.get("model_code") or ""),
+        "product_id_web": str(p.get("product_id_web") or ""),
+        "name": p.get("name") or "",
         "brand": p.get("brand"),
         "category": p.get("category"),
+        "category_code": p.get("category_code"),
+        "style": p.get("style"),
         "price_vnd": p.get("price_vnd"),
-        "price_display": _fmt_price(int(p.get("price_vnd") or 0)),
-        "stock": p.get("stock"),
-        "btu": p.get("btu"),
-        "hp": p.get("hp"),
-        "inverter": p.get("inverter"),
-        "room_m2_min": p.get("room_m2_min"),
-        "room_m2_max": p.get("room_m2_max"),
-        "power_label": p.get("power_label"),
-        "noise_db": p.get("noise_db"),
-        "promo": p.get("promo"),
-        "tags": p.get("tags") or [],
-        "pros": p.get("pros") or [],
-        "cons": p.get("cons") or [],
-        "description": p.get("description") or "",
-        "in_stock": int(p.get("stock") or 0) > 0,
-        "source": f"catalog:{p.get('sku')}",
+        "price_display": _fmt_price(p.get("price_vnd")),
+        "original_price_vnd": p.get("original_price_vnd"),
+        "sale_price_vnd": p.get("sale_price_vnd"),
+        "has_current_price": bool(p.get("has_current_price")),
+        "usable_capacity_l": p.get("usable_capacity_l"),
+        "gross_capacity_l": p.get("gross_capacity_l"),
+        "freezer_capacity_l": p.get("freezer_capacity_l"),
+        "fridge_capacity_l": p.get("fridge_capacity_l"),
+        "household_size_label": p.get("household_size_label"),
+        "household_size_min": p.get("household_size_min"),
+        "household_size_max": p.get("household_size_max"),
+        "energy_saving_technology": p.get("energy_saving_technology"),
+        "has_energy_saving": bool(p.get("has_energy_saving")),
+        "food_preservation_technology": p.get("food_preservation_technology"),
+        "doors": p.get("doors"),
+        "height_cm": p.get("height_cm"),
+        "width_cm": p.get("width_cm"),
+        "depth_cm": p.get("depth_cm"),
+        "external_water_dispenser": p.get("external_water_dispenser"),
+        "automatic_mode": p.get("automatic_mode"),
+        "description": (p.get("description") or "")[:500],
+        "source": p.get("source"),
     }
 
 
+def product_public(p: dict[str, Any]) -> dict[str, Any]:
+    result = _summary(p)
+    result.update(
+        {
+            "cooling_technology": p.get("cooling_technology"),
+            "made_in": p.get("made_in"),
+            "release_time": p.get("release_time"),
+            "tray_material": p.get("tray_material"),
+            "energy_consumption": p.get("energy_consumption"),
+            "body_material": p.get("body_material"),
+            "features": p.get("features") or [],
+            "motor_material": p.get("motor_material"),
+            "convertible_compartment_l": p.get("convertible_compartment_l"),
+            "weight_kg": p.get("weight_kg"),
+            "gift_promotion": p.get("gift_promotion"),
+            "source_url": p.get("source_url"),
+            "source_sheet": p.get("source_sheet"),
+            "source_row": p.get("source_row"),
+            "specs": p.get("specs") or {},
+        }
+    )
+    return result
+
+
 def get_by_sku(sku: str) -> dict[str, Any] | None:
-    sku_u = sku.upper().strip()
-    for p in load_products():
-        if str(p.get("sku", "")).upper() == sku_u:
-            return product_public(p)
+    normalized = str(sku).strip()
+    for product in load_products():
+        if str(product.get("sku") or "").strip() == normalized:
+            return product_public(product)
     return None
+
+
+def _contains(text: str | None, query: str) -> bool:
+    return query.casefold() in (text or "").casefold()
+
+
+def _fits_household(product: dict[str, Any], household_size: int) -> bool:
+    minimum = product.get("household_size_min")
+    maximum = product.get("household_size_max")
+    if minimum is None:
+        return False
+    return household_size >= int(minimum) and (
+        maximum is None or household_size <= int(maximum)
+    )
+
+
+def _within_dimension(product: dict[str, Any], key: str, maximum: float | None) -> bool:
+    if maximum is None:
+        return True
+    value = product.get(key)
+    return value is not None and float(value) <= maximum
 
 
 def search(
     query: str = "",
     *,
     budget_vnd: int | None = None,
-    room_m2: float | None = None,
-    inverter: bool | None = None,
+    household_size: int | None = None,
+    min_capacity_l: int | None = None,
+    max_width_cm: float | None = None,
+    max_height_cm: float | None = None,
+    max_depth_cm: float | None = None,
+    energy_saving: bool | None = None,
     brand: str = "",
-    limit: int = 8,
+    style: str = "",
+    priced_only: bool = False,
+    limit: int | None = 8,
 ) -> list[dict[str, Any]]:
-    q = (query or "").lower().strip()
-    brand_l = brand.lower().strip()
-    scored: list[tuple[float, dict]] = []
-    for p in load_products():
-        if p.get("category") and p.get("category") != "may_lanh" and "may_lanh" not in str(p.get("category")):
-            # allow only AC catalog for this pivot
-            if p.get("category") not in ("may_lanh",):
-                continue
+    q = (query or "").casefold().strip()
+    brand_q = brand.casefold().strip()
+    style_q = style.casefold().strip()
+    scored: list[tuple[float, int, dict[str, Any]]] = []
+
+    for index, product in enumerate(load_products()):
+        if int(product.get("category_code") or 0) != 38:
+            continue
+        price = product.get("price_vnd")
+        if priced_only and price is None:
+            continue
+        if budget_vnd is not None and (price is None or int(price) > budget_vnd):
+            continue
+        if household_size is not None and not _fits_household(product, household_size):
+            continue
+        capacity = product.get("usable_capacity_l")
+        if min_capacity_l is not None and (
+            capacity is None or int(capacity) < min_capacity_l
+        ):
+            continue
+        if not _within_dimension(product, "width_cm", max_width_cm):
+            continue
+        if not _within_dimension(product, "height_cm", max_height_cm):
+            continue
+        if not _within_dimension(product, "depth_cm", max_depth_cm):
+            continue
+        if energy_saving is not None and bool(product.get("has_energy_saving")) != energy_saving:
+            continue
+        if brand_q and brand_q not in str(product.get("brand") or "").casefold():
+            continue
+        if style_q and style_q not in str(product.get("style") or "").casefold():
+            continue
+
         text = " ".join(
-            str(p.get(k, ""))
-            for k in ("name", "brand", "description", "sku", "tags", "promo")
-        ).lower()
-        score = 0.0
+            str(value)
+            for value in (
+                product.get("sku"),
+                product.get("model_code"),
+                product.get("product_id_web"),
+                product.get("name"),
+                product.get("brand"),
+                product.get("style"),
+                product.get("cooling_technology"),
+                product.get("energy_saving_technology"),
+                product.get("food_preservation_technology"),
+                product.get("features"),
+                product.get("description"),
+                "lấy nước bên ngoài external water dispenser"
+                if product.get("external_water_dispenser")
+                else "",
+                "làm đá tự động automatic mode" if product.get("automatic_mode") else "",
+                " ".join(str(value) for value in (product.get("specs") or {}).values()),
+            )
+            if value
+        ).casefold()
+        score = 1.0
         if q:
-            for tok in re.split(r"\s+", q):
-                if len(tok) > 1 and tok in text:
+            score = 0.0
+            for token in re.split(r"\s+", q):
+                if len(token) > 1 and token in text:
                     score += 1.0
             if q in text:
-                score += 2.0
-        else:
-            score = 1.0
-        if brand_l and brand_l not in str(p.get("brand", "")).lower():
-            continue
-        if inverter is True and not p.get("inverter"):
-            continue
-        if inverter is False and p.get("inverter"):
-            continue
-        price = int(p.get("price_vnd") or 0)
-        if budget_vnd and price > budget_vnd * 1.05:
-            continue
-        if room_m2 is not None:
-            rmin = float(p.get("room_m2_min") or 0)
-            rmax = float(p.get("room_m2_max") or 999)
-            # soft band ±20%
-            if room_m2 < rmin * 0.85 or room_m2 > rmax * 1.2:
-                score -= 2.0
-            elif rmin <= room_m2 <= rmax:
                 score += 3.0
-            else:
-                score += 1.0
-        if int(p.get("stock") or 0) <= 0:
-            score -= 1.0
-        if score > 0 or not q:
-            scored.append((score, p))
-    scored.sort(key=lambda x: (-x[0], int(x[1].get("price_vnd") or 0)))
-    return [product_public(p) for _, p in scored[: max(1, min(limit, 50))]]
+            if score <= 0:
+                continue
+        if household_size is not None:
+            score += 4.0
+        if min_capacity_l is not None:
+            score += 2.0
+        if price is not None:
+            score += 0.5
+
+        scored.append((score, index, product))
+
+    scored.sort(
+        key=lambda item: (
+            -item[0],
+            item[2].get("price_vnd") is None,
+            int(item[2].get("price_vnd") or 10**15),
+            item[1],
+        )
+    )
+    selected = scored if limit is None else scored[: max(1, min(limit, 100))]
+    return [_summary(product) for _, _, product in selected]
 
 
 def compare(skus: list[str]) -> dict[str, Any]:
-    items = []
-    for s in skus[:5]:
-        p = get_by_sku(s)
-        if p:
-            items.append(p)
+    items = [product for sku in skus[:5] if (product := get_by_sku(sku))]
     if len(items) < 2:
-        return {"ok": False, "error": "Cần ≥2 SKU hợp lệ", "items": items, "source": "catalog"}
+        return {
+            "ok": False,
+            "error": "Cần ít nhất 2 SKU hợp lệ",
+            "items": items,
+            "source": "catalog:google_sheet",
+        }
 
-    tradeoffs = []
-    by_price = sorted(items, key=lambda x: int(x["price_vnd"]))
-    by_noise = sorted(items, key=lambda x: int(x.get("noise_db") or 99))
-    by_btu = sorted(items, key=lambda x: int(x.get("btu") or 0), reverse=True)
-    tradeoffs.append(f"Rẻ nhất: {by_price[0]['name']} ({by_price[0]['price_display']}).")
-    tradeoffs.append(f"Êm nhất (dB thấp): {by_noise[0]['name']} (~{by_noise[0].get('noise_db')} dB).")
-    tradeoffs.append(f"Công suất BTU cao nhất: {by_btu[0]['name']} ({by_btu[0].get('btu')} BTU).")
-    inv = [i for i in items if i.get("inverter")]
-    if inv and len(inv) < len(items):
-        tradeoffs.append("Máy inverter tiết kiệm điện hơn non-inverter khi chạy nhiều giờ/ngày.")
+    tradeoffs: list[str] = []
+    priced = [item for item in items if item.get("price_vnd") is not None]
+    if priced:
+        cheapest = min(priced, key=lambda item: int(item["price_vnd"]))
+        tradeoffs.append(
+            f"Giá hiện tại thấp nhất: {cheapest['name']} ({cheapest['price_display']})."
+        )
+    capacities = [item for item in items if item.get("usable_capacity_l") is not None]
+    if capacities:
+        largest = max(capacities, key=lambda item: int(item["usable_capacity_l"]))
+        tradeoffs.append(
+            f"Dung tích sử dụng lớn nhất: {largest['name']} ({largest['usable_capacity_l']} lít)."
+        )
+    widths = [item for item in items if item.get("width_cm") is not None]
+    if widths:
+        narrowest = min(widths, key=lambda item: float(item["width_cm"]))
+        tradeoffs.append(
+            f"Ngang gọn nhất: {narrowest['name']} ({narrowest['width_cm']:g} cm)."
+        )
+    discounted = [
+        item
+        for item in items
+        if item.get("original_price_vnd") and item.get("sale_price_vnd")
+        and int(item["original_price_vnd"]) > int(item["sale_price_vnd"])
+    ]
+    if discounted:
+        best_discount = max(
+            discounted,
+            key=lambda item: int(item["original_price_vnd"])
+            - int(item["sale_price_vnd"]),
+        )
+        discount = int(best_discount["original_price_vnd"]) - int(
+            best_discount["sale_price_vnd"]
+        )
+        tradeoffs.append(
+            f"Giảm giá nhiều nhất: {best_discount['name']} ({_fmt_price(discount)})."
+        )
 
     return {
         "ok": True,
         "items": items,
         "tradeoffs": tradeoffs,
         "plain_summary": " | ".join(tradeoffs),
-        "source": "catalog:compare",
+        "source": "catalog:google_sheet:category_code=38",
     }
 
 
-def _score_need(p: dict[str, Any], need: dict[str, Any]) -> float:
+def _score_need(product: dict[str, Any], need: dict[str, Any]) -> float:
     score = 0.0
-    room = need.get("room_m2")
+    household_size = need.get("household_size")
     budget = need.get("budget_vnd")
+    target_capacity = need.get("capacity_l")
     priorities = need.get("priority") or need.get("priorities") or []
     if isinstance(priorities, str):
         priorities = [priorities]
 
-    if room is not None:
-        rmin = float(p.get("room_m2_min") or 0)
-        rmax = float(p.get("room_m2_max") or 999)
-        if rmin <= float(room) <= rmax:
-            score += 5.0
-        elif rmin * 0.85 <= float(room) <= rmax * 1.2:
-            score += 2.0
+    if household_size is not None:
+        if _fits_household(product, int(household_size)):
+            score += 6.0
         else:
-            score -= 3.0
+            score -= 8.0
 
-    price = int(p.get("price_vnd") or 0)
-    if budget:
-        b = int(budget)
-        if price <= b:
-            score += 3.0
-            score += max(0, 2.0 - (b - price) / max(b, 1) * 2)  # prefer closer to budget
+    capacity = product.get("usable_capacity_l")
+    if target_capacity is not None:
+        if capacity is None:
+            score -= 5.0
         else:
-            score -= 4.0
+            difference = abs(int(capacity) - int(target_capacity))
+            score += max(-4.0, 5.0 - difference / max(int(target_capacity), 1) * 10)
 
-    tags = set(p.get("tags") or [])
-    for pr in priorities:
-        pr_l = str(pr).lower()
-        if pr_l in tags or any(pr_l in t for t in tags):
-            score += 2.0
-        if "tiết kiệm" in pr_l or "tiet_kiem" in pr_l or pr_l == "tiet_kiem_dien":
-            if p.get("inverter"):
-                score += 2.0
-        if pr_l in ("em", "êm", "quiet"):
-            noise = int(p.get("noise_db") or 30)
-            score += max(0, (30 - noise) / 5)
-        if pr_l in ("gia_re", "rẻ", "re"):
-            score += max(0, 3.0 - price / 5_000_000)
-        if "cong_suat" in pr_l or "mạnh" in pr_l:
-            score += int(p.get("btu") or 0) / 10000
+    price = product.get("price_vnd")
+    if price is None:
+        return -100.0
+    if budget is not None:
+        budget_int = int(budget)
+        if int(price) <= budget_int:
+            score += 4.0
+            score += max(0.0, 2.0 - (budget_int - int(price)) / max(budget_int, 1) * 2)
+        elif need.get("budget_flexible"):
+            score -= min(5.0, (int(price) - budget_int) / max(budget_int, 1) * 10)
+        else:
+            return -100.0
 
-    if int(p.get("stock") or 0) > 0:
+    for field, need_key in (
+        ("width_cm", "max_width_cm"),
+        ("height_cm", "max_height_cm"),
+        ("depth_cm", "max_depth_cm"),
+    ):
+        maximum = need.get(need_key)
+        if maximum is not None and not _within_dimension(product, field, float(maximum)):
+            return -100.0
+        if maximum is not None:
+            score += 1.0
+
+    preferred_styles = need.get("preferred_styles") or []
+    if isinstance(preferred_styles, str):
+        preferred_styles = [preferred_styles]
+    if preferred_styles and any(
+        _contains(product.get("style"), preferred) for preferred in preferred_styles
+    ):
+        score += 4.0
+
+    preservation = str(product.get("food_preservation_technology") or "").casefold()
+    for priority in priorities:
+        value = str(priority).casefold()
+        if value in {"tiet_kiem_dien", "tiết kiệm điện", "inverter"}:
+            score += 3.0 if product.get("has_energy_saving") else -2.0
+        elif value in {"lay_nuoc_ngoai", "lấy nước ngoài"}:
+            score += 3.0 if product.get("external_water_dispenser") else -1.0
+        elif value in {"tu_dong", "tự động"}:
+            score += 3.0 if product.get("automatic_mode") else -1.0
+        elif value in {"dong_mem", "đông mềm"}:
+            score += 3.0 if "đông mềm" in preservation else -1.0
+        elif value in {"bao_quan", "giữ tươi", "bao quản"}:
+            score += 2.0 if preservation else -1.0
+        elif value in {"gia_re", "giá rẻ", "rẻ"}:
+            score += max(0.0, 4.0 - int(price) / 10_000_000)
+        elif value in {"dung_tich_lon", "dung tích lớn"} and capacity:
+            score += min(4.0, int(capacity) / 200)
+
+    if (
+        product.get("sale_price_vnd")
+        and product.get("original_price_vnd")
+        and int(product["original_price_vnd"]) > int(product["sale_price_vnd"])
+    ):
         score += 0.5
-    else:
-        score -= 2.0
     return score
 
 
 def recommend_top3(need: dict[str, Any]) -> dict[str, Any]:
-    """Rank AC products for a need profile. LLM must not invent SKUs beyond this list."""
+    """Rank currently-priced refrigerators for a normalized need profile."""
     missing = []
-    if not need.get("room_m2") and need.get("room_m2") != 0:
-        missing.append("room_m2")
-    if not need.get("budget_vnd") and need.get("budget_flexible") is not True:
+    if need.get("household_size") is None and need.get("capacity_l") is None:
+        missing.append("household_size")
+    if need.get("budget_vnd") is None and need.get("budget_flexible") is not True:
         missing.append("budget_vnd")
-
     if missing and not need.get("force"):
         return {
             "ok": False,
             "need_more": True,
             "missing_slots": missing,
             "ask": _clarify_questions(missing),
-            "source": "recommend_rules",
+            "source": "recommend_rules:refrigerator",
         }
 
     scored = []
-    for p in load_products():
-        if p.get("category") not in ("may_lanh", None) and p.get("category") != "may_lanh":
-            if "may_lanh" not in str(p.get("category", "")):
-                # skip non-AC if mixed
-                if not str(p.get("sku", "")).startswith("AC-"):
-                    continue
-        s = _score_need(p, need)
-        scored.append((s, p))
-    scored.sort(key=lambda x: -x[0])
+    for product in load_products():
+        if int(product.get("category_code") or 0) != 38:
+            continue
+        score = _score_need(product, need)
+        if score > -50:
+            scored.append((score, product))
+    scored.sort(
+        key=lambda item: (
+            -item[0],
+            int(item[1].get("price_vnd") or 10**15),
+        )
+    )
 
-    # diversify brands in top 3
-    top: list[dict] = []
+    top: list[dict[str, Any]] = []
     brands: set[str] = set()
-    for s, p in scored:
-        if s < -1:
+    for score, product in scored:
+        brand = str(product.get("brand") or "")
+        if brand in brands and len(top) < 2:
             continue
-        b = str(p.get("brand") or "")
-        if b in brands and len(top) < 2:
-            continue
-        pub = product_public(p)
-        pub["match_score"] = round(s, 2)
-        pub["why"] = _why(p, need)
-        top.append(pub)
-        brands.add(b)
+        public = _summary(product)
+        public["match_score"] = round(score, 2)
+        public["why"] = _why(product, need)
+        top.append(public)
+        brands.add(brand)
         if len(top) >= 3:
             break
     if len(top) < 3:
-        for s, p in scored:
-            if product_public(p)["sku"] in {t["sku"] for t in top}:
+        selected_skus = {item["sku"] for item in top}
+        for score, product in scored:
+            if str(product.get("sku")) in selected_skus:
                 continue
-            pub = product_public(p)
-            pub["match_score"] = round(s, 2)
-            pub["why"] = _why(p, need)
-            top.append(pub)
+            public = _summary(product)
+            public["match_score"] = round(score, 2)
+            public["why"] = _why(product, need)
+            top.append(public)
             if len(top) >= 3:
                 break
 
-    tradeoffs = []
-    if len(top) >= 2:
-        c = compare([t["sku"] for t in top])
-        tradeoffs = c.get("tradeoffs") or []
-
+    tradeoffs = compare([item["sku"] for item in top]).get("tradeoffs", []) if len(top) >= 2 else []
     return {
-        "ok": True,
+        "ok": bool(top),
         "need_more": False,
+        "message": (
+            "Không tìm thấy mẫu có giá đáp ứng đầy đủ ngân sách và giới hạn đã chọn."
+            if not top
+            else ""
+        ),
         "need": need,
         "top3": top,
         "tradeoffs": tradeoffs,
-        "source": "catalog:recommend_top3",
-        "disclaimer": "Giá/tồn theo catalog demo; đối chiếu tại quầy trước khi chốt.",
+        "source": "google_sheet:category_code=38:recommend_top3",
+        "disclaimer": (
+            "Giá theo snapshot Google Sheet; bảng không có dữ liệu tồn kho. "
+            "Cần kiểm tra lại giá và khả năng giao hàng trước khi chốt."
+        ),
     }
 
 
 def recommendation_need(
     *,
-    room_m2: float | None = None,
+    household_size: int | None = None,
+    capacity_l: int | None = None,
     budget_vnd: int | None = None,
     priorities: list[str] | None = None,
+    preferred_styles: list[str] | None = None,
+    max_width_cm: float | None = None,
+    max_height_cm: float | None = None,
+    max_depth_cm: float | None = None,
     force: bool = False,
     free_text: str = "",
 ) -> dict[str, Any]:
-    """Build a normalized need profile for every recommendation entry point."""
     need = extract_need_from_text(free_text) if free_text else {}
-    if room_m2 is not None:
-        need["room_m2"] = room_m2
-    if budget_vnd is not None:
-        need["budget_vnd"] = budget_vnd
+    overrides = {
+        "household_size": household_size,
+        "capacity_l": capacity_l,
+        "budget_vnd": budget_vnd,
+        "max_width_cm": max_width_cm,
+        "max_height_cm": max_height_cm,
+        "max_depth_cm": max_depth_cm,
+    }
+    for key, value in overrides.items():
+        if value is not None:
+            need[key] = value
     if priorities:
         need["priority"] = priorities
+    if preferred_styles:
+        need["preferred_styles"] = preferred_styles
     if force:
         need["force"] = True
         need["budget_flexible"] = True
@@ -290,67 +469,116 @@ def recommendation_need(
 
 
 def _clarify_questions(missing: list[str]) -> list[str]:
-    qmap = {
-        "room_m2": "Phòng khoảng bao nhiêu mét vuông ạ (vd 12, 20, 30)?",
-        "budget_vnd": "Ngân sách khoảng bao nhiêu ạ (vd dưới 10 triệu, 12–15 triệu)?",
-        "priority": "Mình ưu tiên tiết kiệm điện, máy êm, giá rẻ hay làm lạnh mạnh ạ?",
+    questions = {
+        "household_size": "Nhà mình có bao nhiêu người dùng tủ lạnh ạ?",
+        "budget_vnd": "Ngân sách dự kiến khoảng bao nhiêu ạ?",
     }
-    return [qmap[m] for m in missing if m in qmap]
+    return [questions[item] for item in missing if item in questions]
 
 
-def _why(p: dict[str, Any], need: dict[str, Any]) -> str:
+def _why(product: dict[str, Any], need: dict[str, Any]) -> str:
     bits = []
-    room = need.get("room_m2")
-    if room is not None:
-        bits.append(f"phù hợp ~{p.get('room_m2_min')}–{p.get('room_m2_max')}m²")
-    if p.get("inverter"):
-        bits.append("inverter tiết kiệm điện")
-    if p.get("noise_db") and int(p["noise_db"]) <= 21:
-        bits.append(f"êm ~{p['noise_db']}dB")
+    if product.get("usable_capacity_l"):
+        bits.append(f"dung tích {product['usable_capacity_l']} lít")
+    if product.get("household_size_label"):
+        bits.append(f"gợi ý cho {product['household_size_label']}")
+    if product.get("style"):
+        bits.append(str(product["style"]))
+    if product.get("has_energy_saving") and product.get("energy_saving_technology"):
+        bits.append(str(product["energy_saving_technology"]))
     budget = need.get("budget_vnd")
-    if budget and int(p.get("price_vnd") or 0) <= int(budget):
+    if budget and int(product.get("price_vnd") or 0) <= int(budget):
         bits.append("trong ngân sách")
-    if p.get("promo"):
-        bits.append(str(p["promo"])[:40])
-    return "; ".join(bits) if bits else (p.get("description") or "")[:80]
+    dimensions = [product.get("width_cm"), product.get("height_cm"), product.get("depth_cm")]
+    if all(value is not None for value in dimensions):
+        bits.append(f"ngang×cao×sâu {dimensions[0]:g}×{dimensions[1]:g}×{dimensions[2]:g} cm")
+    if product.get("sale_price_vnd") and product.get("original_price_vnd"):
+        discount = int(product["original_price_vnd"]) - int(product["sale_price_vnd"])
+        if discount > 0:
+            bits.append(f"giảm {_fmt_price(discount)}")
+    return "; ".join(bits)
 
 
 def extract_need_from_text(text: str) -> dict[str, Any]:
-    """Heuristic need extraction for offline / pre-LLM."""
-    t = (text or "").lower()
-    need: dict[str, Any] = {"priority": []}
+    """Extract common refrigerator needs from Vietnamese text without an LLM."""
+    raw = text or ""
+    normalized = raw.casefold()
+    need: dict[str, Any] = {"priority": [], "preferred_styles": []}
 
-    m = re.search(r"(\d+)\s*m2|(\d+)\s*m²|(\d+)\s*mét", t)
-    if m:
-        need["room_m2"] = float(m.group(1) or m.group(2) or m.group(3))
-    m2 = re.search(r"phòng\s*(\d+)", t)
-    if "room_m2" not in need and m2:
-        need["room_m2"] = float(m2.group(1))
+    if match := re.search(r"(?:trên|tren|hơn|hon)\s*(\d+)\s*(?:người|nguoi)", normalized):
+        need["household_size"] = int(match.group(1)) + 1
 
-    # budget
-    if re.search(r"dưới\s*(\d+)\s*tr", t):
-        need["budget_vnd"] = int(re.search(r"dưới\s*(\d+)\s*tr", t).group(1)) * 1_000_000
-    elif re.search(r"(\d+)\s*-\s*(\d+)\s*tr", t):
-        mm = re.search(r"(\d+)\s*-\s*(\d+)\s*tr", t)
-        need["budget_vnd"] = int(mm.group(2)) * 1_000_000
-    elif re.search(r"(\d+)\s*triệu|(\d+)\s*tr\b", t):
-        mm = re.search(r"(\d+)\s*triệu|(\d+)\s*tr\b", t)
-        need["budget_vnd"] = int(mm.group(1) or mm.group(2)) * 1_000_000
-    if "rẻ" in t or "tiết kiệm chi phí" in t or "ngân sách thấp" in t:
-        need.setdefault("budget_vnd", 8_000_000)
+    household_patterns = (
+        r"(?:gia đình|gia dinh|nhà|nha|cho)\s*(\d+)\s*(?:người|nguoi)",
+        r"(\d+)\s*(?:người|nguoi)",
+    )
+    for pattern in household_patterns:
+        if "household_size" in need:
+            break
+        if match := re.search(pattern, normalized):
+            need["household_size"] = int(match.group(1))
+            break
+
+    if match := re.search(r"(\d+)\s*(?:lít|lit)\b", normalized):
+        need["capacity_l"] = int(match.group(1))
+
+    if match := re.search(r"(?:dưới|duoi)\s*(\d+)\s*(?:triệu|trieu|tr)\b", normalized):
+        need["budget_vnd"] = int(match.group(1)) * 1_000_000
+    elif match := re.search(r"(\d+)\s*[-–]\s*(\d+)\s*(?:triệu|trieu|tr)\b", normalized):
+        need["budget_vnd"] = int(match.group(2)) * 1_000_000
+    elif match := re.search(r"(\d+)\s*(?:triệu|trieu|tr)\b", normalized):
+        need["budget_vnd"] = int(match.group(1)) * 1_000_000
+    if any(term in normalized for term in ("giá rẻ", "càng rẻ", "ngân sách thấp")):
         need["priority"].append("gia_re")
 
-    if any(k in t for k in ("êm", "em ", "không ồn", "phòng ngủ")):
-        need["priority"].append("em")
-    if any(k in t for k in ("tiết kiệm điện", "tiet kiem dien", "ít điện", "inverter")):
-        need["priority"].append("tiet_kiem_dien")
-    if any(k in t for k in ("mạnh", "nhanh lạnh", "phòng khách", "lớn")):
-        need["priority"].append("cong_suat_lon")
-    if "lọc" in t or "không khí" in t:
-        need["priority"].append("loc_khi")
-    if "rẻ" in t or "giá rẻ" in t:
-        need["priority"].append("gia_re")
+    for label, key in (
+        ("ngang", "max_width_cm"),
+        ("cao", "max_height_cm"),
+        ("sâu", "max_depth_cm"),
+        ("sau", "max_depth_cm"),
+    ):
+        if match := re.search(
+            rf"{label}\s*(?:tối đa|toi da|dưới|duoi)?\s*(\d+(?:[.,]\d+)?)",
+            normalized,
+        ):
+            need[key] = float(match.group(1).replace(",", "."))
+
+    style_terms = {
+        "side by side": "Tủ lớn - Side by Side",
+        "multi door": "Multi Door",
+        "4 cánh": "Multi Door",
+        "ngăn đá dưới": "Ngăn đá dưới",
+        "ngan da duoi": "Ngăn đá dưới",
+        "ngăn đá trên": "Ngăn đá trên",
+        "ngan da tren": "Ngăn đá trên",
+        "mini": "Mini",
+    }
+    for term, style in style_terms.items():
+        if term in normalized and style not in need["preferred_styles"]:
+            need["preferred_styles"].append(style)
+
+    priority_terms = {
+        "tiết kiệm điện": "tiet_kiem_dien",
+        "tiet kiem dien": "tiet_kiem_dien",
+        "inverter": "tiet_kiem_dien",
+        "lấy nước ngoài": "lay_nuoc_ngoai",
+        "lay nuoc ngoai": "lay_nuoc_ngoai",
+        "làm đá tự động": "tu_dong",
+        "lam da tu dong": "tu_dong",
+        "đông mềm": "dong_mem",
+        "dong mem": "dong_mem",
+        "giữ tươi": "bao_quan",
+        "giu tuoi": "bao_quan",
+        "bảo quản": "bao_quan",
+        "bao quan": "bao_quan",
+        "dung tích lớn": "dung_tich_lon",
+        "dung tich lon": "dung_tich_lon",
+    }
+    for term, priority in priority_terms.items():
+        if term in normalized:
+            need["priority"].append(priority)
 
     need["priority"] = list(dict.fromkeys(need["priority"]))
-    need["raw"] = text[:200]
+    need["preferred_styles"] = list(dict.fromkeys(need["preferred_styles"]))
+    need["raw"] = raw[:300]
     return need

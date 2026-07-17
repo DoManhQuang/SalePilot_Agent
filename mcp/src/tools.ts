@@ -15,72 +15,92 @@ import {
 const ResponseFormatSchema = z.enum(["markdown", "json"]).default("markdown");
 type ResponseFormat = z.infer<typeof ResponseFormatSchema>;
 
-function productField(product: object, key: string): string {
-  const value = Reflect.get(product, key);
+function field(record: object, key: string): string {
+  const value = Reflect.get(record, key);
   return typeof value === "string" || typeof value === "number" ? String(value) : "-";
+}
+
+function records(value: unknown): Record<string, unknown>[] {
+  return Array.isArray(value)
+    ? value.filter(
+        (item): item is Record<string, unknown> => item !== null && typeof item === "object",
+      )
+    : [];
+}
+
+function strings(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
 }
 
 function formatProducts(page: z.infer<typeof ProductPageSchema>): string {
   if (page.items.length === 0) {
-    return "Không tìm thấy sản phẩm phù hợp trong catalog demo.";
+    return "Không tìm thấy tủ lạnh phù hợp trong snapshot category_code=38.";
   }
   const products = page.items.map((product) => {
-    return `- **${productField(product, "sku")}**: ${productField(product, "name")} | ${productField(product, "price_display")} | ${productField(product, "room_m2_min")}–${productField(product, "room_m2_max")}m²`;
+    return `- **${field(product, "sku")}**: ${field(product, "name")} | ${field(product, "price_display")} | ${field(product, "usable_capacity_l")} lít | ${field(product, "household_size_label")}`;
   });
-  return [`## Sản phẩm (${page.total_count})`, ...products].join("\n");
-}
-
-function recordList(value: unknown): Record<string, unknown>[] {
-  return Array.isArray(value)
-    ? value.filter((item): item is Record<string, unknown> => item !== null && typeof item === "object")
-    : [];
-}
-
-function stringList(value: unknown): string[] {
-  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+  return [`## Tủ lạnh (${page.total_count})`, ...products].join("\n");
 }
 
 function formatProduct(product: Record<string, unknown>): string {
   const details = [
-    `- SKU: **${productField(product, "sku")}**`,
-    `- Tên: ${productField(product, "name")}`,
-    `- Giá: ${productField(product, "price_display")}`,
-    `- Công suất: ${productField(product, "btu")} BTU | ${productField(product, "hp")} HP`,
-    `- Phòng phù hợp: ${productField(product, "room_m2_min")}–${productField(product, "room_m2_max")}m²`,
-    `- Inverter: ${String(product.inverter === true)}`,
-    `- Độ ồn: ${productField(product, "noise_db")} dB`,
+    `- SKU: **${field(product, "sku")}**`,
+    `- Tên hiển thị: ${field(product, "name")}`,
+    `- Giá hiện tại: ${field(product, "price_display")}`,
+    `- Kiểu tủ: ${field(product, "style")}`,
+    `- Dung tích sử dụng: ${field(product, "usable_capacity_l")} lít`,
+    `- Số người theo bảng: ${field(product, "household_size_label")}`,
+    `- Ngang × cao × sâu: ${field(product, "width_cm")} × ${field(product, "height_cm")} × ${field(product, "depth_cm")} cm`,
+    `- Tiết kiệm điện: ${field(product, "energy_saving_technology")}`,
+    `- Công nghệ bảo quản: ${field(product, "food_preservation_technology")}`,
+    `- Tồn kho: không có trong bảng nguồn`,
+    `- Nguồn: ${field(product, "source")}`,
   ];
-  return [`## ${productField(product, "name")}`, ...details].join("\n");
+  return [`## ${field(product, "name")}`, ...details].join("\n");
 }
 
 function formatComparison(comparison: Record<string, unknown>): string {
-  const items = recordList(comparison.items).map((product) => {
-    return `- ${productField(product, "sku")}: ${productField(product, "name")} (${productField(product, "price_display")})`;
+  const items = records(comparison.items).map((product) => {
+    return `- ${field(product, "sku")}: ${field(product, "name")} (${field(product, "price_display")}, ${field(product, "usable_capacity_l")} lít)`;
   });
-  const tradeoffs = stringList(comparison.tradeoffs).map((tradeoff) => `- ${tradeoff}`);
-  return ["## So sánh máy lạnh", ...items, "", "### Trade-off", ...tradeoffs].join("\n");
+  const tradeoffs = strings(comparison.tradeoffs).map((tradeoff) => `- ${tradeoff}`);
+  return ["## So sánh tủ lạnh", ...items, "", "### Trade-off", ...tradeoffs].join("\n");
 }
 
 function formatRecommendation(recommendation: Record<string, unknown>): string {
   if (recommendation.need_more === true) {
-    const questions = stringList(recommendation.ask).map((question) => `- ${question}`);
-    return ["## Cần thêm thông tin", ...questions].join("\n");
+    return [
+      "## Cần thêm thông tin",
+      ...strings(recommendation.ask).map((question) => `- ${question}`),
+    ].join("\n");
   }
-  const products = recordList(recommendation.top3).map((product, index) => {
-    return `${index + 1}. **${productField(product, "sku")}** - ${productField(product, "name")} (${productField(product, "price_display")})\n   ${productField(product, "why")}`;
+  if (recommendation.ok === false) {
+    return `## Không tìm thấy mẫu phù hợp\n${field(recommendation, "message")}`;
+  }
+  const products = records(recommendation.top3).map((product, index) => {
+    return `${index + 1}. **${field(product, "sku")}** - ${field(product, "name")} (${field(product, "price_display")})\n   ${field(product, "why")}`;
   });
-  const tradeoffs = stringList(recommendation.tradeoffs).map((tradeoff) => `- ${tradeoff}`);
-  return ["## Top 3 đề xuất", ...products, "", "### Trade-off", ...tradeoffs].join("\n");
+  const tradeoffs = strings(recommendation.tradeoffs).map((tradeoff) => `- ${tradeoff}`);
+  const disclaimer = field(recommendation, "disclaimer");
+  return [
+    "## Top 3 tủ lạnh",
+    ...products,
+    "",
+    "### Trade-off",
+    ...tradeoffs,
+    "",
+    disclaimer,
+  ].join("\n");
 }
 
 function formatFaq(page: z.infer<typeof FaqPageSchema>): string {
   if (page.items.length === 0) {
-    return "Không tìm thấy chính sách phù hợp trong knowledge base.";
+    return "Không tìm thấy nội dung phù hợp trong knowledge base.";
   }
-  const entries = page.items.map((faq) => {
-    return `### ${productField(faq, "question")}\n${productField(faq, "answer")}`;
-  });
-  return [`## Chính sách và FAQ (${page.total_count})`, ...entries].join("\n\n");
+  return [
+    `## Hướng dẫn và chính sách (${page.total_count})`,
+    ...page.items.map((faq) => `### ${faq.question}\n${faq.answer}`),
+  ].join("\n\n");
 }
 
 function toolResult<T extends Record<string, unknown>>(
@@ -114,15 +134,21 @@ export function registerSalePilotTools(server: McpServer, api: SalePilotApiClien
   server.registerTool(
     "salepilot_search_products",
     {
-      title: "Search SalePilot Air Conditioners",
+      title: "Search SalePilot Refrigerators",
       description:
-        "Search the SalePilot air-conditioner catalog by keyword, budget, room size, inverter preference, or brand. Returns paginated catalog facts only; use salepilot_recommend_products for a ranked top-3 recommendation.",
+        "Search all refrigerator rows from Google Sheet category_code=38 by keyword, current price, household size, capacity, dimensions, energy-saving technology, brand, or style. Rows without price remain searchable; set priced_only=true for currently priced products.",
       inputSchema: z.object({
-        query: z.string().max(200).optional().describe("Keyword such as 'inverter quiet'"),
+        query: z.string().max(200).optional().describe("Keyword, SKU, model code, feature, or technology"),
         budget_vnd: z.number().int().nonnegative().max(1_000_000_000).optional(),
-        room_m2: z.number().positive().max(500).optional(),
-        inverter: z.boolean().optional(),
+        household_size: z.number().int().min(1).max(20).optional(),
+        min_capacity_l: z.number().int().min(1).max(2_000).optional(),
+        max_width_cm: z.number().positive().max(500).optional(),
+        max_height_cm: z.number().positive().max(500).optional(),
+        max_depth_cm: z.number().positive().max(500).optional(),
+        energy_saving: z.boolean().optional(),
         brand: z.string().max(80).optional(),
+        style: z.string().max(100).optional(),
+        priced_only: z.boolean().default(false),
         limit: z.number().int().min(1).max(50).default(20),
         offset: z.number().int().nonnegative().default(0),
         response_format: ResponseFormatSchema,
@@ -148,11 +174,11 @@ export function registerSalePilotTools(server: McpServer, api: SalePilotApiClien
   server.registerTool(
     "salepilot_get_product",
     {
-      title: "Get a SalePilot Air Conditioner",
+      title: "Get a SalePilot Refrigerator",
       description:
-        "Get catalog-backed details for one air-conditioner SKU, including price, stock, room-size range, inverter status, noise, promotions, pros, and trade-offs.",
+        "Get one refrigerator SKU with source-backed capacity, dimensions, technologies, current/original prices, promotions, and original spreadsheet specifications. This tool never claims stock availability.",
       inputSchema: z.object({
-        sku: z.string().trim().min(3).max(32).describe("Catalog SKU, for example AC-002"),
+        sku: z.string().trim().min(3).max(32).describe("Numeric source SKU, for example 1751097000182"),
         response_format: ResponseFormatSchema,
       }),
       outputSchema: ProductSchemaOutput,
@@ -176,17 +202,15 @@ export function registerSalePilotTools(server: McpServer, api: SalePilotApiClien
   server.registerTool(
     "salepilot_compare_products",
     {
-      title: "Compare SalePilot Air Conditioners",
+      title: "Compare SalePilot Refrigerators",
       description:
-        "Compare two to five SalePilot air-conditioner SKUs using catalog facts. Returns item details plus price, noise, capacity, and inverter trade-offs.",
+        "Compare two to five refrigerator SKUs by current price, usable capacity, width, and discount using category_code=38 source facts.",
       inputSchema: z.object({
         skus: z
           .array(z.string().trim().min(3).max(32))
           .min(2)
           .max(5)
-          .refine((skus) => new Set(skus.map((sku) => sku.toUpperCase())).size === skus.length, {
-            message: "SKUs must be unique.",
-          }),
+          .refine((skus) => new Set(skus).size === skus.length, { message: "SKUs must be unique." }),
         response_format: ResponseFormatSchema,
       }),
       outputSchema: ComparisonSchema,
@@ -210,13 +234,31 @@ export function registerSalePilotTools(server: McpServer, api: SalePilotApiClien
   server.registerTool(
     "salepilot_recommend_products",
     {
-      title: "Recommend SalePilot Air Conditioners",
+      title: "Recommend SalePilot Refrigerators",
       description:
-        "Rank the catalog and return a diversified top-3 air-conditioner recommendation. Supply room_m2 and budget_vnd for a complete answer; otherwise the tool returns specific clarification questions unless force is true.",
+        "Return a brand-diversified top-3 from currently priced refrigerators. Provide household_size or capacity_l plus budget_vnd; optional style, installation dimensions, and priorities refine the ranking.",
       inputSchema: z.object({
-        room_m2: z.number().positive().max(500).optional(),
+        household_size: z.number().int().min(1).max(20).optional(),
+        capacity_l: z.number().int().min(1).max(2_000).optional(),
         budget_vnd: z.number().int().nonnegative().max(1_000_000_000).optional(),
-        priorities: z.array(z.string().trim().min(1).max(40)).max(6).default([]),
+        priorities: z
+          .array(
+            z.enum([
+              "tiet_kiem_dien",
+              "gia_re",
+              "lay_nuoc_ngoai",
+              "tu_dong",
+              "dong_mem",
+              "bao_quan",
+              "dung_tich_lon",
+            ]),
+          )
+          .max(7)
+          .default([]),
+        preferred_styles: z.array(z.string().trim().min(1).max(100)).max(5).default([]),
+        max_width_cm: z.number().positive().max(500).optional(),
+        max_height_cm: z.number().positive().max(500).optional(),
+        max_depth_cm: z.number().positive().max(500).optional(),
         force: z.boolean().default(false),
         free_text: z.string().max(500).default(""),
         response_format: ResponseFormatSchema,
@@ -242,9 +284,9 @@ export function registerSalePilotTools(server: McpServer, api: SalePilotApiClien
   server.registerTool(
     "salepilot_search_faq",
     {
-      title: "Search SalePilot Policy FAQ",
+      title: "Search SalePilot Refrigerator Guidance",
       description:
-        "Search SalePilot's catalog-backed air-conditioner policies for installation, delivery, warranty, installments, returns, and maintenance. Returns paginated source FAQ entries.",
+        "Search refrigerator sizing, installation-space, pricing-source, preservation, and policy guidance. The knowledge base explicitly identifies facts absent from the source sheet.",
       inputSchema: z.object({
         query: z.string().max(200).default(""),
         limit: z.number().int().min(1).max(50).default(20),
@@ -274,7 +316,7 @@ export function registerSalePilotTools(server: McpServer, api: SalePilotApiClien
     {
       title: "Create a Confirmed SalePilot Lead",
       description:
-        "Create a CRM lead only after the customer explicitly agrees to share their contact information. Requires confirmed=true and a configured MCP write token; never call this tool to infer or fabricate consent.",
+        "Create a CRM lead only after the customer explicitly agrees to share contact information. Requires confirmed=true and a configured MCP write token; never infer consent.",
       inputSchema: z.object({
         confirmed: z.boolean().describe("True only after explicit customer confirmation."),
         name: z.string().trim().min(1).max(128).optional(),

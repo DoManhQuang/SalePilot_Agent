@@ -1,6 +1,6 @@
 # SalePilot — Multi-Agent SME Sales (VAIC 2026)
 
-**SalePilot** — multi-agent AI **so sánh & tư vấn máy lạnh theo nhu cầu thật** (VAIC · Điện Máy Xanh · Năng suất SME).
+**SalePilot** — multi-agent AI **so sánh & tư vấn tủ lạnh theo nhu cầu thật** từ Google Sheet `category_code=38` (VAIC · Điện Máy Xanh · Năng suất SME).
 
 **Stack:** FastAPI + LangGraph · Next.js · catalog domain (rank/compare/top3) · memory · dashboard
 
@@ -9,12 +9,12 @@
 ```
 Web chat → Lead Agent
              ├─ Catalog (search / compare / recommend_top3)
-             ├─ Knowledge (BH, lắp đặt, trả góp)
+             ├─ Knowledge (hướng dẫn chọn tủ + giới hạn nguồn)
              ├─ CRM (SĐT / lead)
              └─ Escalation (người)
 ```
 
-Need loop: room_m² + budget + priority → top 3 + trade-off · no hallucinated prices.
+Need loop: household size/capacity + budget + style/dimensions → top 3 + trade-off. The sheet has no stock column, so SalePilot never claims availability.
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) · [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md).
 
@@ -72,7 +72,7 @@ docker compose up --build
 ```bash
 # backend running on :8000
 cd backend && source .venv/bin/activate
-python -m scripts.simulate_zalo --text "Còn sofa xám dưới 15tr? Ship HN?"
+python -m scripts.simulate_zalo --text "Gia đình 4 người cần tủ lạnh dưới 15 triệu, ngang tối đa 70 cm"
 ```
 
 ## Demo script

@@ -65,7 +65,7 @@ If baseline verification is already failing, **fix that first**.
 curl -s http://127.0.0.1:8000/health
 curl -s -X POST http://127.0.0.1:8000/chat \
   -H 'Content-Type: application/json' \
-  -d '{"message":"Còn sofa xám dưới 15 triệu? Ship HN?","external_id":"verify","channel":"web"}'
+  -d '{"message":"Gia đình 4 người cần tủ lạnh dưới 15 triệu, ngang tối đa 70 cm","external_id":"verify","channel":"web"}'
 ```
 
 ## Definition of done

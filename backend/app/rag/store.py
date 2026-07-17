@@ -8,6 +8,12 @@ _faq_cache: list[dict] | None = None
 _product_cache: list[dict] | None = None
 
 
+def reload_kb() -> None:
+    global _faq_cache, _product_cache
+    _faq_cache = None
+    _product_cache = None
+
+
 def _load_faq() -> list[dict]:
     global _faq_cache
     if _faq_cache is None:
@@ -49,8 +55,6 @@ async def search_faq(query: str, k: int = 3) -> list[dict]:
         reverse=True,
     )
     hits = [f for f in ranked if _score(query, f.get("question", "") + " " + f.get("answer", "")) > 0]
-    if not hits:
-        hits = ranked[:k]
     return [
         {"id": h.get("id"), "question": h.get("question"), "answer": h.get("answer")}
         for h in hits[:k]
@@ -79,8 +83,12 @@ def ingest_kb() -> dict:
         import chromadb
 
         client = chromadb.PersistentClient(path=str(chroma_path))
+        try:
+            client.delete_collection("salepilot_faq")
+        except Exception:
+            pass
         col = client.get_or_create_collection("salepilot_faq")
-        if col.count() == 0 and faq_n:
+        if faq_n:
             faqs = _load_faq()
             col.add(
                 ids=[f["id"] for f in faqs],

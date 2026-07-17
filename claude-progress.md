@@ -6,7 +6,7 @@
 - Standard startup path: `./init.sh` then backend `uvicorn` + frontend `npm run dev`
 - Standard verification path: `./scripts/verify.sh`
 - Current highest-priority unfinished feature: `dash-001` (dashboard browser evidence)
-- Current blocker: none for local super-core smoke
+- Current blocker: none for local refrigerator + MCP smoke
 
 ## Session Log
 
@@ -25,11 +25,11 @@
   - Offline `run_agent` with catalog+knowledge tools
   - HTTP `/health` + `/chat` smoke
 - Evidence captured:
-  - Chat returns sofa under 15tr + ship FAQ; agents `lead,catalog,knowledge`
+  - Historical base scaffold chat returned a furniture demo reply; current product domain is refrigerator category_code=38.
 - Commits: (none required yet)
 - Files or artifacts updated: entire scaffold under `backend/`, `frontend/`, `docs/`
 - Known risk or unresolved issue:
-  - Offline catalog filter can surface non-sofa items in keyword search
+  - Historical base scaffold catalog search was generic; current refrigerator verification is recorded in Session 005.
   - No automated pytest suite yet (`verify-001`)
   - Frontend not e2e tested in headless browser this session
 - Next best step: mark chat/multi-agent features with evidence; implement `verify-001` pytest smoke or `deploy-001` when ready
@@ -72,3 +72,27 @@
 - Known risk or unresolved issue:
   - Lead creation is intentionally unavailable until a unique `MCP_WRITE_TOKEN` is configured in the backend and passed as `SALEPILOT_MCP_WRITE_TOKEN` to the local client.
 - Next best step: configure a local MCP client using `mcp/README.md`, or record frontend browser evidence for `dash-001`.
+
+### Session 005
+
+- Date: 2026-07-17
+- Goal: Migrate SalePilot from AC/base demo catalog to the supplied Google Sheet refrigerator tab.
+- Branch: `feature/refrigerator-catalog` (derived from `feature/salepilot-mcp`; `main` and `dev` remain base-only).
+- Completed:
+  - Imported the public `Tủ Lạnh` sheet (`gid=1924624295`, `category_code=38`) into `backend/data/products.json`.
+  - Added deterministic importer `backend/scripts/import_refrigerators.py` and source contract doc `backend/data/PRODUCT_SOURCE.md`.
+  - Reworked catalog search, compare, need extraction, recommendations, order drafts, MCP API/client, offline agent, prompts, FAQ, frontend copy, and docs for refrigerators.
+  - Preserved all 1,692 SKUs as searchable data; recommendation uses only the 252 rows with current price.
+  - Added guardrails for absent source stock: no stock claims, stock questions route to FAQ/knowledge.
+  - Fixed review findings: hard budgets are enforced, unaccented budget text and decimal dimensions parse, equal price rows are not treated as discounts, external-water search works, order qty is validated, `/products` invalid pagination returns 422, and frontend session IDs are per browser session without hydration mismatch.
+- Verification run:
+  - `python -m scripts.import_refrigerators` PASS; snapshot SHA-256 `e4a8df9d43e33b058fb68d322ab7ff40b0c0318b775518f0bfc0c55f132e9b2a`.
+  - `./scripts/verify.sh` PASS with refrigerator, hard-budget, stock FAQ, order-validation, memory, sandbox, and MCP API checks.
+  - `./init.sh` PASS after the migration.
+  - `cd frontend && npm run build` PASS.
+  - `cd mcp && npm run build && SALEPILOT_API_BASE_URL=http://127.0.0.1:8000 npm run smoke && npm audit --omit=dev` PASS.
+  - Browser `/chat` desktop/mobile verified with console clean, `POST /chat` 200, top-3 refrigerator reply, and Agent Trace visible. Screenshots: `/tmp/opencode/salepilot-refrigerator-chat.png`, `/tmp/opencode/salepilot-refrigerator-chat-mobile.png`.
+- Known risk or unresolved issue:
+  - The source sheet has no stock column and no product-name column; display names are derived and stock must be checked outside SalePilot.
+  - `mcp/evaluations.xml` answers are tied to the checked-in snapshot; rerun/update evaluations if the sheet snapshot changes.
+- Next best step: commit and push `feature/refrigerator-catalog`, then resume `dash-001` browser evidence or deployment work.
