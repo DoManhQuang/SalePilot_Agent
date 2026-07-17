@@ -135,6 +135,25 @@
       ],
       "evidence": [],
       "notes": "Code must be developed primarily during 48h for AI-Native oath"
+    },
+    {
+      "id": "mcp-001",
+      "priority": 9,
+      "area": "mcp",
+      "title": "Local SalePilot MCP server",
+      "user_visible_behavior": "A local MCP client can search and compare the AC catalog, receive top-3 recommendations and policy FAQ results, and create a CRM lead only after explicit consent plus a configured write token.",
+      "status": "passing",
+      "verification": [
+        "./scripts/verify.sh validates the FastAPI /mcp catalog, recommendation, FAQ, and token-protected lead contract.",
+        "cd mcp && npm run build && SALEPILOT_API_BASE_URL=http://127.0.0.1:8000 npm run smoke validates six tools over stdio.",
+        "npm audit --omit=dev exits clean in mcp/."
+      ],
+      "evidence": [
+        "2026-07-17 ./scripts/verify.sh PASS, including verify_mcp.py.",
+        "2026-07-17 MCP smoke PASS: six tools discovered and invoked via official SDK stdio client.",
+        "2026-07-17 isolated SQLite write smoke created a channel=mcp lead only with matching MCP_WRITE_TOKEN / SALEPILOT_MCP_WRITE_TOKEN."
+      ],
+      "notes": "Implementation is on feature/salepilot-mcp. main and dev remain base-only by branch policy."
     }
   ]
 }

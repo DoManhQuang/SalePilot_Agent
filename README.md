@@ -18,6 +18,10 @@ Need loop: room_m² + budget + priority → top 3 + trade-off · no hallucinated
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) · [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md).
 
+## Local MCP server
+
+`mcp/` contains the local stdio SalePilot MCP server for catalog search, comparison, top-3 recommendations, FAQ lookup, and consent-gated CRM lead creation. See [mcp/README.md](mcp/README.md).
+
 ## Agent harness
 
 This repo includes a **coding-agent harness** (instructions · tools · environment · state · feedback):

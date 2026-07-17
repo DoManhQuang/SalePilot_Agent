@@ -77,3 +77,5 @@ async def main() -> None:
 asyncio.run(main())
 print("==> verify: PASS")
 PY
+
+python -m scripts.verify_mcp

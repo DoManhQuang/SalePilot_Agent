@@ -9,6 +9,7 @@ from app.api.chat import router as chat_router
 from app.api.jobs import router as jobs_router
 from app.api.leads import router as leads_router
 from app.api.memory import router as memory_router
+from app.api.mcp import router as mcp_router
 from app.api.outbox import router as outbox_router
 from app.api.products import router as products_router
 from app.api.runs import router as runs_router
@@ -54,6 +55,7 @@ def create_app() -> FastAPI:
     app.include_router(outbox_router)
     app.include_router(zalo_router)
     app.include_router(memory_router)
+    app.include_router(mcp_router)
     app.include_router(runs_router)
     app.include_router(jobs_router)
 

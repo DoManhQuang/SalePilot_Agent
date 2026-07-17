@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     database_url: str = "sqlite+aiosqlite:///./data/salepilot.db"
     cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
     chroma_path: str = "./data/chroma"
+    mcp_write_token: str = ""
 
     zalo_enabled: bool = True
     zalo_client: str = "mock"

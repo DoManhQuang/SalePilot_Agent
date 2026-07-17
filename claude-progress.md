@@ -5,7 +5,7 @@
 - Repository root: `/home/vananh/Homeworks/hackathon_base`
 - Standard startup path: `./init.sh` then backend `uvicorn` + frontend `npm run dev`
 - Standard verification path: `./scripts/verify.sh`
-- Current highest-priority unfinished feature: `deploy-001` (live URL)
+- Current highest-priority unfinished feature: `dash-001` (dashboard browser evidence)
 - Current blocker: none for local super-core smoke
 
 ## Session Log
@@ -52,3 +52,23 @@
 - Completed: modules under agent/memory, skills tools+writer, sandbox, web, trajectory, gateway, scheduler; APIs /memory /runs /jobs; dashboard panels; verify extended
 - Verification run: `./scripts/verify.sh` PASS (agents, memory phone, sandbox deny, trajectory run_id)
 - Next best step: `deploy-001` or UI browser evidence
+
+### Session 004
+
+- Date: 2026-07-17
+- Goal: Add a local TypeScript stdio MCP server and backend contract for SalePilot.
+- Branch: `feature/salepilot-mcp` (derived from `feature/product-advisor-dmx`; `main` and `dev` remain base-only).
+- Completed:
+  - Added FastAPI `/mcp` catalog, comparison, recommendation, FAQ, and consent-gated lead endpoints.
+  - Extracted shared CRM lead persistence so the agent tool and MCP endpoint use the same write path.
+  - Added `mcp/` TypeScript server using the stable MCP SDK v1, Zod schemas, structured output, pagination, timeouts, and actionable errors.
+  - Added six tools: product search/detail/compare/recommendation, FAQ search, and explicit-consent lead creation.
+  - Added `mcp/README.md`, ten read-only `mcp/evaluations.xml` cases, and a backend API contract smoke.
+- Verification run:
+  - `./scripts/verify.sh` PASS, including MCP endpoint smoke and protected lead write check.
+  - `cd mcp && npm run build && SALEPILOT_API_BASE_URL=http://127.0.0.1:8000 npm run smoke` PASS (six tools).
+  - Isolated SQLite backend with matching write tokens: positive lead creation smoke PASS.
+  - `cd mcp && npm audit --omit=dev` reports `found 0 vulnerabilities`.
+- Known risk or unresolved issue:
+  - Lead creation is intentionally unavailable until a unique `MCP_WRITE_TOKEN` is configured in the backend and passed as `SALEPILOT_MCP_WRITE_TOKEN` to the local client.
+- Next best step: configure a local MCP client using `mcp/README.md`, or record frontend browser evidence for `dash-001`.

@@ -114,7 +114,7 @@ def search(
         if score > 0 or not q:
             scored.append((score, p))
     scored.sort(key=lambda x: (-x[0], int(x[1].get("price_vnd") or 0)))
-    return [product_public(p) for _, p in scored[: max(1, min(limit, 15))]]
+    return [product_public(p) for _, p in scored[: max(1, min(limit, 50))]]
 
 
 def compare(skus: list[str]) -> dict[str, Any]:
@@ -265,6 +265,28 @@ def recommend_top3(need: dict[str, Any]) -> dict[str, Any]:
         "source": "catalog:recommend_top3",
         "disclaimer": "Giá/tồn theo catalog demo; đối chiếu tại quầy trước khi chốt.",
     }
+
+
+def recommendation_need(
+    *,
+    room_m2: float | None = None,
+    budget_vnd: int | None = None,
+    priorities: list[str] | None = None,
+    force: bool = False,
+    free_text: str = "",
+) -> dict[str, Any]:
+    """Build a normalized need profile for every recommendation entry point."""
+    need = extract_need_from_text(free_text) if free_text else {}
+    if room_m2 is not None:
+        need["room_m2"] = room_m2
+    if budget_vnd is not None:
+        need["budget_vnd"] = budget_vnd
+    if priorities:
+        need["priority"] = priorities
+    if force:
+        need["force"] = True
+        need["budget_flexible"] = True
+    return need
 
 
 def _clarify_questions(missing: list[str]) -> list[str]:

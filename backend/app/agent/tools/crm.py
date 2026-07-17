@@ -6,6 +6,7 @@ from langchain_core.tools import tool
 from app.agent.tools.runtime import get_ctx, note_tool
 from app.db.session import async_session
 from app.models.entities import Conversation, Lead
+from app.services.leads import create_lead_record
 
 
 @tool
@@ -20,23 +21,18 @@ async def create_lead(
     """Tạo lead CRM khi khách có nhu cầu mua / để lại liên hệ. score 0-1."""
     note_tool("create_lead")
     ctx = get_ctx()
-    score = max(0.0, min(float(score), 1.0))
+    lead = await create_lead_record(
+        name=name or ctx.customer_name or "Khách",
+        phone=phone,
+        channel=ctx.channel,
+        external_id=ctx.external_id,
+        interest=interest,
+        budget_vnd=budget_vnd or None,
+        notes=notes,
+        score=score,
+    )
+    ctx.lead_id = lead.id
     async with async_session() as session:
-        lead = Lead(
-            name=name or ctx.customer_name or "Khách",
-            phone=phone,
-            channel=ctx.channel,
-            external_id=ctx.external_id,
-            interest=interest,
-            budget_vnd=budget_vnd or None,
-            status="new",
-            score=score,
-            notes=notes,
-        )
-        session.add(lead)
-        await session.commit()
-        await session.refresh(lead)
-        ctx.lead_id = lead.id
         if ctx.conversation_id:
             conv = await session.get(Conversation, ctx.conversation_id)
             if conv:

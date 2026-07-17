@@ -2,7 +2,7 @@ import json
 
 from langchain_core.tools import tool
 
-from app.agent.catalog_domain import compare, extract_need_from_text, get_by_sku, recommend_top3, search
+from app.agent.catalog_domain import compare, get_by_sku, recommendation_need, recommend_top3, search
 from app.agent.tools.runtime import note_tool
 
 
@@ -58,16 +58,11 @@ async def recommend_top3(
     priorities: csv vd tiet_kiem_dien,em,gia_re,cong_suat_lon
     """
     note_tool("recommend_top3")
-    need: dict = {}
-    if free_text:
-        need = extract_need_from_text(free_text)
-    if room_m2:
-        need["room_m2"] = room_m2
-    if budget_vnd:
-        need["budget_vnd"] = budget_vnd
-    if priorities:
-        need["priority"] = [p.strip() for p in priorities.split(",") if p.strip()]
-    if force:
-        need["force"] = True
-        need["budget_flexible"] = True
+    need = recommendation_need(
+        room_m2=room_m2 or None,
+        budget_vnd=budget_vnd or None,
+        priorities=[p.strip() for p in priorities.split(",") if p.strip()],
+        force=force,
+        free_text=free_text,
+    )
     return json.dumps(recommend_top3(need), ensure_ascii=False)
