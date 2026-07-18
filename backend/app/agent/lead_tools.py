@@ -9,6 +9,14 @@ from app.agent.run_bag import bag_trace, get_run_bag, reset_run_bag
 from app.agent.sandbox.tools import run_sandbox
 from app.agent.skills.tools import activate_skill, list_skills_tool
 from app.agent.subagents.base import SUBAGENTS, run_subagent
+from app.agent.tools.catalog import (
+    compare_products,
+    get_product_detail,
+    list_categories,
+    recommend_top3,
+    search_products,
+)
+from app.agent.tools.knowledge import search_knowledge
 from app.agent.tools.runtime import get_ctx
 from app.agent.web.tools import fetch_page
 from app.config import get_settings
@@ -104,8 +112,16 @@ async def finalize(reply: str) -> str:
 
 
 LEAD_TOOLS = [
+    # Catalog/knowledge called DIRECTLY (deterministic, in-memory) — no nested
+    # sub-agent ReAct loop. This is the hot path and the main latency win.
+    recommend_top3,
+    search_products,
+    compare_products,
+    get_product_detail,
+    list_categories,
+    search_knowledge,
+    # delegate kept only for the rarer crm/order/escalation sub-agents.
     delegate,
-    delegate_many,
     finalize,
     recall_customer,
     remember_customer,

@@ -15,6 +15,7 @@ async def main() -> None:
         products = await client.get(
             "/mcp/products",
             params={
+                "category": "tu_lanh",
                 "household_size": 4,
                 "budget_vnd": 15_000_000,
                 "priced_only": True,
@@ -25,6 +26,13 @@ async def main() -> None:
         product_page = products.json()
         assert product_page["count"] == 2 and product_page["total_count"] > 50, product_page
         assert all(item["category_code"] == 38 for item in product_page["items"])
+
+        ac_products = await client.get(
+            "/mcp/products",
+            params={"category": "may_lanh", "priced_only": True, "limit": 2},
+        )
+        assert ac_products.status_code == 200, ac_products.text
+        assert all(item["category_code"] == 36 for item in ac_products.json()["items"])
 
         detail = await client.get("/mcp/products/1751097000182")
         assert detail.status_code == 200, detail.text
@@ -48,6 +56,19 @@ async def main() -> None:
         )
         assert recommendation.status_code == 200 and recommendation.json()["top3"], recommendation.text
 
+        ac_recommendation = await client.post(
+            "/mcp/recommendations",
+            json={
+                "category": "may_lanh",
+                "budget_vnd": 12_000_000,
+                "priorities": ["tiet_kiem_dien", "chay_em"],
+                "free_text": "phòng 20m2 chạy êm",
+            },
+        )
+        assert ac_recommendation.status_code == 200, ac_recommendation.text
+        ac_body = ac_recommendation.json()
+        assert ac_body["top3"] and ac_body["category"] == "may_lanh", ac_body
+
         faq = await client.get("/mcp/knowledge/faq", params={"query": "tồn kho", "limit": 2})
         assert faq.status_code == 200 and faq.json()["count"] > 0, faq.text
 
@@ -57,7 +78,7 @@ async def main() -> None:
         )
         assert blocked_write.status_code in {401, 503}, blocked_write.text
 
-    print("OK MCP API refrigerator catalog, recommendation, FAQ, and protected lead write")
+    print("OK MCP API multi-category catalog, recommendation, FAQ, and protected lead write")
 
 
 if __name__ == "__main__":

@@ -5,21 +5,30 @@ from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, Tool
 
 from app.agent.llm import get_chat_model
 from app.agent.prompts import subagent_prompt
-from app.agent.tools.catalog import compare_products, get_product_detail, recommend_top3, search_products
+from app.agent.tools.catalog import (
+    compare_products,
+    get_product_detail,
+    list_categories,
+    recommend_top3,
+    search_products,
+)
 from app.agent.tools.crm import create_lead, escalate_to_human, schedule_followup, update_lead_status
 from app.agent.tools.knowledge import search_knowledge
 from app.agent.tools.order import create_order_draft
 from app.agent.tools.runtime import get_ctx, note_tool
 
 SUBAGENTS: dict[str, list] = {
-    "catalog": [search_products, get_product_detail, compare_products, recommend_top3],
+    "catalog": [list_categories, search_products, get_product_detail, compare_products, recommend_top3],
     "knowledge": [search_knowledge],
     "crm": [create_lead, update_lead_status, schedule_followup],
     "order": [create_order_draft],
     "escalation": [escalate_to_human],
 }
 
-MAX_SUBAGENT_STEPS = 4
+# Catalog/knowledge are now called directly by the lead (no nested ReAct).
+# delegate() is kept only for crm/order/escalation, so a tight cap is enough:
+# one tool call + one summary.
+MAX_SUBAGENT_STEPS = 2
 
 
 async def run_subagent(name: str, task: str, context: str = "") -> dict[str, Any]:

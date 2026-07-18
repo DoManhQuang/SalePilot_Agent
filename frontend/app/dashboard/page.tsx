@@ -10,6 +10,15 @@ import {
   fetchZaloOutbox,
 } from "@/lib/api";
 
+function statusPill(status?: string) {
+  const s = (status || "").toLowerCase();
+  if (["won", "done", "completed", "success", "qualified", "active"].some((k) => s.includes(k)))
+    return "green";
+  if (["pending", "new", "open", "queued", "running"].some((k) => s.includes(k))) return "amber";
+  if (["lost", "failed", "error", "escalated"].some((k) => s.includes(k))) return "red";
+  return "blue";
+}
+
 export default function DashboardPage() {
   const [leads, setLeads] = useState<any[]>([]);
   const [convs, setConvs] = useState<any[]>([]);
@@ -18,10 +27,12 @@ export default function DashboardPage() {
   const [jobs, setJobs] = useState<any[]>([]);
   const [run, setRun] = useState<any>(null);
   const [err, setErr] = useState("");
+  const [loading, setLoading] = useState(false);
 
   async function load() {
     try {
       setErr("");
+      setLoading(true);
       const [l, c, z, m, j, r] = await Promise.all([
         fetchLeads(),
         fetchConversations(),
@@ -38,6 +49,8 @@ export default function DashboardPage() {
       setRun(r?.run || null);
     } catch (e: unknown) {
       setErr(e instanceof Error ? e.message : String(e));
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -45,66 +58,103 @@ export default function DashboardPage() {
     load();
   }, []);
 
+  const stats = [
+    { icon: "🧾", value: leads.length, label: "Leads" },
+    { icon: "💬", value: convs.length, label: "Cuộc hội thoại" },
+    { icon: "🧠", value: memory.length, label: "Hồ sơ ghi nhớ" },
+    { icon: "⏱️", value: jobs.length, label: "Jobs đã lên lịch" },
+  ];
+
   return (
-    <main style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+    <main className="stack">
+      <div className="dash-head">
         <div>
-          <h2 style={{ margin: 0 }}>Owner dashboard</h2>
+          <h1>Owner dashboard</h1>
           <p className="muted">Leads · memory · jobs · agent runs · Zalo</p>
         </div>
-        <button className="btn ghost" onClick={load}>
-          Refresh
+        <button className="btn ghost sm" onClick={load} disabled={loading}>
+          {loading ? "Đang tải…" : "↻ Làm mới"}
         </button>
       </div>
-      {err && <p style={{ color: "var(--danger)" }}>{err}</p>}
+
+      {err && <div className="error-note" style={{ margin: 0 }}>⚠️ {err}</div>}
+
+      <section className="stat-grid">
+        {stats.map((s) => (
+          <div key={s.label} className="card stat-card">
+            <div className="top">
+              <span className="label">{s.label}</span>
+              <span className="icon" aria-hidden>
+                {s.icon}
+              </span>
+            </div>
+            <div className="value">{s.value}</div>
+          </div>
+        ))}
+      </section>
 
       <section className="card">
-        <strong>Leads ({leads.length})</strong>
-        <table className="table">
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Name</th>
-              <th>Phone</th>
-              <th>Channel</th>
-              <th>Interest</th>
-              <th>Budget</th>
-              <th>Status</th>
-              <th>Score</th>
-            </tr>
-          </thead>
-          <tbody>
-            {leads.map((l) => (
-              <tr key={l.id}>
-                <td>{l.id}</td>
-                <td>{l.name}</td>
-                <td>{l.phone}</td>
-                <td>{l.channel}</td>
-                <td>{l.interest}</td>
-                <td>
-                  {l.budget_vnd ? `${Number(l.budget_vnd).toLocaleString("vi-VN")}đ` : "—"}
-                </td>
-                <td>{l.status}</td>
-                <td>{l.score}</td>
+        <h2 className="card-title">
+          <span className="dot" /> Leads ({leads.length})
+        </h2>
+        <div className="table-wrap" style={{ marginTop: 14 }}>
+          <table className="table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Tên</th>
+                <th>SĐT</th>
+                <th>Kênh</th>
+                <th>Quan tâm</th>
+                <th>Ngân sách</th>
+                <th>Trạng thái</th>
+                <th>Điểm</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {leads.map((l) => (
+                <tr key={l.id}>
+                  <td>{l.id}</td>
+                  <td>{l.name || "—"}</td>
+                  <td>{l.phone || "—"}</td>
+                  <td>{l.channel || "—"}</td>
+                  <td>{l.interest || "—"}</td>
+                  <td>{l.budget_vnd ? `${Number(l.budget_vnd).toLocaleString("vi-VN")}đ` : "—"}</td>
+                  <td>
+                    <span className={`pill ${statusPill(l.status)}`}>{l.status || "—"}</span>
+                  </td>
+                  <td>{l.score ?? "—"}</td>
+                </tr>
+              ))}
+              {!leads.length && (
+                <tr>
+                  <td colSpan={8}>
+                    <div className="empty" style={{ border: "none", background: "none" }}>
+                      Chưa có lead nào.
+                    </div>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </section>
 
       <div className="grid2">
         <section className="card">
-          <strong>Customer memory</strong>
-          <div className="trace-list" style={{ marginTop: 10 }}>
+          <h2 className="card-title">
+            <span className="dot" /> Customer memory
+          </h2>
+          <div className="trace-list" style={{ marginTop: 14 }}>
             {memory.map((m) => (
               <div key={m.id} className="trace-item">
                 <div className="meta">
                   {m.channel}:{m.external_id}
                 </div>
-                <div style={{ fontSize: 13 }}>
+                <div className="detail">
                   {m.profile?.phone && <div>SĐT: {m.profile.phone}</div>}
                   {m.profile?.interests?.length > 0 && (
-                    <div>Interests: {(m.profile.interests || []).join(", ")}</div>
+                    <div>Quan tâm: {(m.profile.interests || []).join(", ")}</div>
                   )}
                   {!m.profile?.phone && !m.profile?.interests?.length && (
                     <span className="muted">{m.summary || "—"}</span>
@@ -112,86 +162,113 @@ export default function DashboardPage() {
                 </div>
               </div>
             ))}
-            {!memory.length && <p className="muted">Chưa có memory.</p>}
+            {!memory.length && <div className="empty">Chưa có memory.</div>}
           </div>
         </section>
 
         <section className="card">
-          <strong>Scheduled jobs</strong>
-          <div className="trace-list" style={{ marginTop: 10 }}>
+          <h2 className="card-title">
+            <span className="dot" /> Scheduled jobs
+          </h2>
+          <div className="trace-list" style={{ marginTop: 14 }}>
             {jobs.map((j) => (
               <div key={j.id} className="trace-item">
                 <div className="meta">
-                  #{j.id} · {j.status}
+                  #{j.id} · <span className={`pill ${statusPill(j.status)}`}>{j.status}</span>
                 </div>
-                <div style={{ fontSize: 13 }}>{j.result || j.payload}</div>
+                <div className="detail">{j.result || j.payload}</div>
               </div>
             ))}
-            {!jobs.length && <p className="muted">Chưa có job.</p>}
+            {!jobs.length && <div className="empty">Chưa có job.</div>}
           </div>
         </section>
       </div>
 
       <div className="grid2">
         <section className="card">
-          <strong>Conversations</strong>
-          <table className="table">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Channel</th>
-                <th>Customer</th>
-                <th>Status</th>
-                <th>Human?</th>
-              </tr>
-            </thead>
-            <tbody>
-              {convs.map((c) => (
-                <tr key={c.id}>
-                  <td>{c.id}</td>
-                  <td>{c.channel}</td>
-                  <td>{c.customer_name}</td>
-                  <td>{c.status}</td>
-                  <td>{c.needs_human ? "yes" : "no"}</td>
+          <h2 className="card-title">
+            <span className="dot" /> Conversations
+          </h2>
+          <div className="table-wrap" style={{ marginTop: 14 }}>
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Kênh</th>
+                  <th>Khách</th>
+                  <th>Trạng thái</th>
+                  <th>Cần người?</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {convs.map((c) => (
+                  <tr key={c.id}>
+                    <td>{c.id}</td>
+                    <td>{c.channel}</td>
+                    <td>{c.customer_name || "—"}</td>
+                    <td>
+                      <span className={`pill ${statusPill(c.status)}`}>{c.status || "—"}</span>
+                    </td>
+                    <td>
+                      <span className={`pill ${c.needs_human ? "red" : "green"}`}>
+                        {c.needs_human ? "Cần" : "Không"}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+                {!convs.length && (
+                  <tr>
+                    <td colSpan={5}>
+                      <div className="empty" style={{ border: "none", background: "none" }}>
+                        Chưa có hội thoại.
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </section>
 
         <section className="card">
-          <strong>Zalo outbox (mock)</strong>
-          <div className="trace-list" style={{ marginTop: 10 }}>
+          <h2 className="card-title">
+            <span className="dot" /> Zalo outbox (mock)
+          </h2>
+          <div className="trace-list" style={{ marginTop: 14 }}>
             {zalo.map((z) => (
               <div key={z.id} className="trace-item">
                 <div className="meta">
                   {z.direction} · {z.user_id}
                 </div>
-                <div>{z.content}</div>
+                <div className="detail">{z.content}</div>
               </div>
             ))}
-            {!zalo.length && <p className="muted">Trống.</p>}
+            {!zalo.length && <div className="empty">Trống.</div>}
           </div>
         </section>
       </div>
 
       <section className="card">
-        <strong>Latest agent run</strong>
+        <h2 className="card-title">
+          <span className="dot" /> Latest agent run
+        </h2>
         {run ? (
-          <div style={{ marginTop: 10, fontSize: 14 }}>
-            <div className="meta muted">
-              {run.run_id} · agents: {(run.agents || []).join(", ")}
+          <div style={{ marginTop: 14, fontSize: 14 }}>
+            <div className="meta muted" style={{ marginBottom: 10 }}>
+              <code className="md-code">{run.run_id}</code> · agents: {(run.agents || []).join(", ")}
             </div>
-            <p>
+            <p style={{ margin: "0 0 8px" }}>
               <strong>User:</strong> {run.user_text}
             </p>
-            <p>
-              <strong>Reply:</strong> {run.reply?.slice(0, 400)}
+            <p style={{ margin: 0, color: "var(--text-soft)" }}>
+              <strong style={{ color: "var(--text)" }}>Reply:</strong> {run.reply?.slice(0, 400)}
               {(run.reply?.length || 0) > 400 ? "…" : ""}
             </p>
           </div>
         ) : (
-          <p className="muted">Chưa có run — chat trước.</p>
+          <div className="empty" style={{ marginTop: 14 }}>
+            Chưa có run — hãy chat trước.
+          </div>
         )}
       </section>
     </main>

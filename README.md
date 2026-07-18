@@ -1,20 +1,23 @@
 # SalePilot — Multi-Agent SME Sales (VAIC 2026)
 
-**SalePilot** — multi-agent AI **so sánh & tư vấn tủ lạnh theo nhu cầu thật** từ Google Sheet `category_code=38` (VAIC · Điện Máy Xanh · Năng suất SME).
+**SalePilot** — multi-agent AI **so sánh & tư vấn điện máy – công nghệ theo nhu cầu thật** trên **14 ngành hàng** (8.746 SKU) từ `Spec_cate_gia.xlsx`, lưu trong **MongoDB** (VAIC · Điện Máy Xanh · Năng suất SME).
 
-**Stack:** FastAPI + LangGraph · Next.js · catalog domain (rank/compare/top3) · memory · dashboard
+**Stack:** FastAPI + LangGraph · MongoDB (Docker) · Next.js · category-aware engine (need slots / rank / compare / top3) · memory · dashboard
 
 ## Architecture (short)
 
 ```
 Web chat → Lead Agent
-             ├─ Catalog (search / compare / recommend_top3)
-             ├─ Knowledge (hướng dẫn chọn tủ + giới hạn nguồn)
+             ├─ Catalog (list_categories / search / compare / recommend_top3)
+             │    └─ MongoDB catalog (14 ngành, registry rule sâu từng ngành)
+             ├─ Knowledge (FAQ chính sách + giới hạn nguồn)
              ├─ CRM (SĐT / lead)
              └─ Escalation (người)
 ```
 
-Need loop: household size/capacity + budget + style/dimensions → top 3 + trade-off. The sheet has no stock column, so SalePilot never claims availability.
+Need loop theo ngành: tủ lạnh (số người + dung tích + kích thước), máy lạnh (m² phòng), máy giặt/sấy (kg tải), đồng hồ (nghe gọi/SIM/pin), PC/tablet/màn hình (cấu hình)… + ngân sách → top 3 + trade-off. Nguồn không có cột tồn kho nên SalePilot không bao giờ khẳng định còn hàng.
+
+**Ngành hàng:** tu_lanh · may_lanh · may_giat · may_say · may_rua_chen · tu_dong · may_nuoc_nong · dong_ho · may_tinh_de_ban · man_hinh · may_in · may_tinh_bang · micro_karaoke · micro_thu_am
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) · [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md).
 
@@ -45,13 +48,21 @@ Pattern from [Learn Harness Engineering](https://walkinglabs.github.io/learn-har
 cp .env.example .env
 # optional: OPENAI_API_KEY
 
+# 1) MongoDB (catalog store)
+docker compose up -d mongo
+
+# 2) Import 14 ngành hàng từ Excel vào MongoDB (+ snapshot fallback)
 cd backend && source .venv/bin/activate  # or python3 -m venv .venv && pip install -r requirements.txt
+python -m scripts.import_spec_catalog --excel ../Spec_cate_gia.xlsx
 python -m scripts.seed_db && python -m scripts.ingest_kb
 uvicorn app.main:app --reload --port 8000
 
 # Terminal B
 cd frontend && npm install && npm run dev
 ```
+
+> Không có MongoDB? Engine tự fallback sang `backend/data/catalog_snapshot.json`
+> (được importer ghi kèm) — offline path và verify vẫn chạy.
 
 Open http://localhost:3000 → **Tư vấn**
 

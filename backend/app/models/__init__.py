@@ -1,20 +1,26 @@
 from app.models.base import Base
 from app.models.entities import (
     AgentRun,
+    CatalogProduct,
+    Category,
     Conversation,
     CustomerMemory,
+    KbDoc,
     Lead,
     Message,
     OrderDraft,
     OutboxMessage,
     ProcessedEvent,
-    Product,
+    ProductSpec,
     ScheduledJob,
 )
 
 __all__ = [
     "Base",
-    "Product",
+    "Category",
+    "CatalogProduct",
+    "ProductSpec",
+    "KbDoc",
     "Lead",
     "Conversation",
     "Message",

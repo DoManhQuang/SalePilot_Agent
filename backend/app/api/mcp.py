@@ -47,6 +47,7 @@ class ProductComparisonRequest(BaseModel):
 
 
 class RecommendationRequest(BaseModel):
+    category: str = Field(default="", max_length=40)
     household_size: int | None = Field(default=None, ge=1, le=20)
     capacity_l: int | None = Field(default=None, ge=1, le=2_000)
     budget_vnd: int | None = Field(default=None, ge=0, le=1_000_000_000)
@@ -119,6 +120,7 @@ def require_mcp_write_token(
 @router.get("/products", response_model=PageOut)
 async def list_mcp_products(
     query: str = Query(default="", max_length=200),
+    category: str = Query(default="", max_length=40),
     budget_vnd: int | None = Query(default=None, ge=0, le=1_000_000_000),
     household_size: int | None = Query(default=None, ge=1, le=20),
     min_capacity_l: int | None = Query(default=None, ge=1, le=2_000),
@@ -134,6 +136,7 @@ async def list_mcp_products(
 ) -> PageOut:
     results = search(
         query,
+        category=category or None,
         budget_vnd=budget_vnd,
         household_size=household_size,
         min_capacity_l=min_capacity_l,
@@ -170,7 +173,9 @@ async def create_mcp_product_comparison(request: ProductComparisonRequest) -> di
 
 @router.post("/recommendations")
 async def create_mcp_recommendation(request: RecommendationRequest) -> dict[str, Any]:
+    # Legacy MCP clients predate multi-category and expect refrigerators.
     need = recommendation_need(
+        category=request.category or "tu_lanh",
         household_size=request.household_size,
         capacity_l=request.capacity_l,
         budget_vnd=request.budget_vnd,

@@ -1,17 +1,21 @@
-"""Seed products + sample leads into SQLite."""
+"""Seed sample leads into PostgreSQL and warm the catalog cache.
+
+The product catalog lives in PostgreSQL (loaded by ``etl_to_postgres``) with
+MongoDB as the secondary store, so this script only ensures the CRM tables exist
+and holds a couple of demo leads.
+"""
 
 import asyncio
-import json
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from sqlalchemy import delete, select
+from sqlalchemy import select
 
 from app.db.session import async_session, init_db
-from app.models.entities import Lead, Product
+from app.models.entities import Lead
 
 DATA = ROOT / "data"
 
@@ -19,12 +23,11 @@ DATA = ROOT / "data"
 async def main() -> None:
     Path(ROOT / "data").mkdir(parents=True, exist_ok=True)
     await init_db()
-    products = json.loads((DATA / "products.json").read_text(encoding="utf-8"))
     async with async_session() as session:
-        # Product details live in the JSON snapshot. Clear the legacy SQL mirror so it
-        # cannot expose stale AC stock or prices absent from the refrigerator sheet.
-        await session.execute(delete(Product))
-        print(f"Loaded {len(products)} refrigerator products from JSON snapshot")
+        from app.catalog import repository
+
+        count = repository.load()
+        print(f"Catalog: {count} products from {repository.source()}")
 
         lead_exists = (await session.execute(select(Lead))).scalars().first()
         if not lead_exists:

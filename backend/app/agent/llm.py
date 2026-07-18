@@ -2,39 +2,93 @@ from langchain_core.language_models.chat_models import BaseChatModel
 
 from app.config import get_settings
 
+# Sensible current defaults used only when MODEL_NAME doesn't match the resolved
+# provider (e.g. LLM_PROVIDER=anthropic but MODEL_NAME left as an OpenAI id).
+_DEFAULT_MODEL = {
+    "openai": "gpt-4o-mini",
+    "anthropic": "claude-haiku-4-5",  # current, valid; set MODEL_NAME=claude-sonnet-5/claude-opus-4-8 for higher quality
+}
+
+
+def _resolve_provider() -> str:
+    """Pick the active LLM provider.
+
+    Honors LLM_PROVIDER when that provider's key is present; otherwise falls back
+    to whichever key IS configured. This makes the service multi-provider: set
+    both keys and switch with LLM_PROVIDER, and it still works if only one key
+    is filled in regardless of LLM_PROVIDER.
+    """
+    s = get_settings()
+    provider = (s.llm_provider or "").lower().strip()
+    has_openai = bool(s.openai_api_key)
+    has_anthropic = bool(s.anthropic_api_key)
+    if provider == "anthropic" and has_anthropic:
+        return "anthropic"
+    if provider == "openai" and has_openai:
+        return "openai"
+    if has_anthropic:
+        return "anthropic"
+    if has_openai:
+        return "openai"
+    return provider or "openai"
+
 
 def has_llm_key() -> bool:
+    """True if ANY provider key is configured (LLM path); else offline advisor."""
     s = get_settings()
-    provider = s.llm_provider.lower()
+    return bool(s.openai_api_key or s.anthropic_api_key)
+
+
+def _pick_model(provider: str, model_name: str) -> str:
+    """Use MODEL_NAME if it matches the provider, else the provider default."""
+    name = (model_name or "").strip()
+    is_claude = name.lower().startswith("claude")
     if provider == "anthropic":
-        return bool(s.anthropic_api_key)
-    return bool(s.openai_api_key)
+        return name if is_claude else _DEFAULT_MODEL["anthropic"]
+    return name if (name and not is_claude) else _DEFAULT_MODEL["openai"]
 
 
 def get_chat_model() -> BaseChatModel:
     settings = get_settings()
-    provider = settings.llm_provider.lower()
+    provider = _resolve_provider()
 
     if provider == "anthropic":
-        from langchain_anthropic import ChatAnthropic
-
         if not settings.anthropic_api_key:
             return _FallbackModel()
+        from langchain_anthropic import ChatAnthropic
+
         return ChatAnthropic(
-            model=settings.model_name if "claude" in settings.model_name else "claude-3-5-haiku-latest",
+            model=_pick_model("anthropic", settings.model_name),
             api_key=settings.anthropic_api_key,
             temperature=0.3,
+            max_tokens=settings.llm_max_tokens,
+            timeout=settings.llm_timeout_s,
+            max_retries=1,
         )
-
-    from langchain_openai import ChatOpenAI
 
     if not settings.openai_api_key:
         return _FallbackModel()
-    return ChatOpenAI(
-        model=settings.model_name,
-        api_key=settings.openai_api_key,
-        temperature=0.3,
-    )
+    from langchain_openai import ChatOpenAI
+
+    # max_retries=1 + tight timeout: slow/rate-limited compatible endpoints must
+    # fail fast instead of silently retrying into 100s+ waits. max_tokens caps
+    # reply length — chat answers don't need essays and slow endpoints charge
+    # wall-clock per token.
+    kwargs: dict = {
+        "api_key": settings.openai_api_key,
+        "temperature": 0.3,
+        "max_tokens": settings.llm_max_tokens,
+        "timeout": settings.llm_timeout_s,
+        "max_retries": 1,
+    }
+    if settings.openai_base_url:
+        # OpenAI-compatible endpoint: trust MODEL_NAME verbatim (provider-specific
+        # ids like "llama-3.3-70b", "deepseek-chat", "anthropic/claude-sonnet-5").
+        kwargs["base_url"] = settings.openai_base_url
+        kwargs["model"] = (settings.model_name or "").strip() or _DEFAULT_MODEL["openai"]
+    else:
+        kwargs["model"] = _pick_model("openai", settings.model_name)
+    return ChatOpenAI(**kwargs)
 
 
 class _FallbackModel(BaseChatModel):

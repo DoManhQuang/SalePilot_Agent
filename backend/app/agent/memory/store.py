@@ -18,6 +18,9 @@ DEFAULT_PROFILE: dict[str, Any] = {
     "preferred_skus": [],
     "notes": [],
     "last_intent": "",
+    # Accumulated need profile (category, budget, slots, priorities) so
+    # follow-up turns like "giá khoảng 10tr" keep the earlier context.
+    "need": {},
 }
 
 
@@ -73,6 +76,44 @@ async def get_memory_summary(channel: str, external_id: str) -> str:
     if profile.get("notes"):
         parts.append("ghi_chú=" + "; ".join(profile["notes"][-3:]))
     return " | ".join(parts)
+
+
+async def load_need(channel: str, external_id: str) -> dict[str, Any]:
+    """Accumulated multi-turn need profile for this customer."""
+    profile = await load_profile(channel, external_id)
+    need = profile.get("need")
+    return dict(need) if isinstance(need, dict) else {}
+
+
+async def save_need(channel: str, external_id: str, need: dict[str, Any]) -> None:
+    if not get_settings().memory_enabled or not external_id:
+        return
+    profile = await load_profile(channel, external_id)
+    profile["need"] = {k: v for k, v in need.items() if k != "raw" and v not in (None, "", [])}
+    summary = await _summary_from_profile(profile)
+    async with async_session() as session:
+        row = (
+            await session.execute(
+                select(CustomerMemory).where(
+                    CustomerMemory.channel == channel,
+                    CustomerMemory.external_id == external_id,
+                )
+            )
+        ).scalar_one_or_none()
+        payload = json.dumps(profile, ensure_ascii=False)
+        if row:
+            row.profile_json = payload
+            row.summary = summary
+        else:
+            session.add(
+                CustomerMemory(
+                    channel=channel,
+                    external_id=external_id,
+                    profile_json=payload,
+                    summary=summary,
+                )
+            )
+        await session.commit()
 
 
 async def merge_profile(
@@ -151,16 +192,17 @@ async def maybe_extract_from_text(channel: str, external_id: str, text: str) -> 
         return await load_profile(channel, external_id)
 
     phone_m = re.search(r"0\d{8,10}", text.replace(" ", "").replace(".", ""))
-    budget_m = re.search(r"(\d+)\s*(triệu|tr|m)", text.lower())
     interest = ""
     t = text.lower()
-    for kw in ("tủ lạnh", "tu lanh", "side by side", "multi door", "ngăn đá", "ngan da"):
-        if kw in t:
-            interest = kw
-            break
-    budget = None
-    if budget_m:
-        budget = int(budget_m.group(1)) * 1_000_000
+    from app.catalog.categories import detect_category
+
+    category = detect_category(text)
+    if category:
+        interest = category.display.lower()
+    # Reuse the robust budget parser (avoids matching "20m2" as 20 triệu).
+    from app.agent.catalog_domain import _extract_budget
+
+    budget = _extract_budget(text)
 
     if not phone_m and not interest and budget is None:
         return await load_profile(channel, external_id)

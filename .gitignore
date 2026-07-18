@@ -1,8 +1,9 @@
-# Secrets & env
+# Secrets & env — ignore every .env* variant, keep the committed template.
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
 *.pem
+*.key
 
 # Python
 __pycache__/
@@ -30,6 +31,11 @@ backend/data/*.db-*
 backend/data/chroma/
 backend/data/trajectories/
 *.log
+
+# Large local data sources (regenerated via backend/scripts import/ETL — kept out of git)
+backend/data/catalog_snapshot.json
+Spec_cate_gia.xlsx
+*.xlsx
 
 # OS / IDE
 .DS_Store

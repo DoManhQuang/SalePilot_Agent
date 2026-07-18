@@ -24,6 +24,11 @@ async def lifespan(_app: FastAPI):
     Path("data").mkdir(parents=True, exist_ok=True)
     Path("data/trajectories").mkdir(parents=True, exist_ok=True)
     await init_db()
+    # Warm the catalog cache (MongoDB primary, snapshot fallback) off the event loop.
+    from app.catalog import repository as catalog_repository
+
+    count = await asyncio.to_thread(catalog_repository.load)
+    print(f"[catalog] loaded {count} products from {catalog_repository.source()}")
     stop = asyncio.Event()
     task = asyncio.create_task(scheduler_loop(stop))
     yield
@@ -61,12 +66,19 @@ def create_app() -> FastAPI:
 
     @app.get("/health")
     async def health():
+        from app.catalog import repository as catalog_repository
+
         return {
             "ok": True,
             "service": "salepilot",
             "architecture": "product-advisor-multi-agent",
             "shop": settings.shop_name,
-            "category": settings.shop_category,
+            "default_category": settings.shop_category,
+            "catalog": {
+                "source": catalog_repository.source(),
+                "products": len(catalog_repository.all_products()),
+                "categories": len(catalog_repository.category_counts()),
+            },
             "llm_provider": settings.llm_provider,
             "features": {
                 "memory": settings.memory_enabled,

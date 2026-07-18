@@ -1,21 +1,82 @@
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Float, Integer, String, Text, func
+from sqlalchemy import JSON, Boolean, DateTime, Float, Integer, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base
 
 
-class Product(Base):
+# --------------------------------------------------------------------------- #
+# Catalog — the real dienmayxanh dataset, transformed into normalized SQL.
+# MongoDB keeps the same documents (secondary); PostgreSQL is the primary store
+# the ranking engine and PostgREST both read from.
+# --------------------------------------------------------------------------- #
+
+class Category(Base):
+    __tablename__ = "categories"
+
+    code: Mapped[int] = mapped_column(Integer, primary_key=True)
+    slug: Mapped[str] = mapped_column(String(64), index=True)
+    display: Mapped[str] = mapped_column(String(128), default="")
+    is_deep: Mapped[bool] = mapped_column(Boolean, default=False)
+    product_count: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class CatalogProduct(Base):
     __tablename__ = "products"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    sku: Mapped[str] = mapped_column(String(32), unique=True, index=True)
-    name: Mapped[str] = mapped_column(String(255))
-    category: Mapped[str] = mapped_column(String(64), index=True)
-    price_vnd: Mapped[int] = mapped_column(Integer)
-    stock: Mapped[int] = mapped_column(Integer, default=0)
+    sku: Mapped[str] = mapped_column(String(32), primary_key=True)
+    model_code: Mapped[str] = mapped_column(String(64), default="", index=True)
+    product_id_web: Mapped[str] = mapped_column(String(64), default="")
+    name: Mapped[str] = mapped_column(Text, default="")
+    brand: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
+    category_code: Mapped[int] = mapped_column(Integer, index=True)
+    category_slug: Mapped[str] = mapped_column(String(64), default="", index=True)
+    category_display: Mapped[str] = mapped_column(String(128), default="")
+    price_original_vnd: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    price_sale_vnd: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    price_vnd: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    has_current_price: Mapped[bool] = mapped_column(Boolean, default=False)
+    gift_promotion: Mapped[str | None] = mapped_column(Text, nullable=True)
+    outstanding: Mapped[str | None] = mapped_column(Text, nullable=True)
+    rating: Mapped[float | None] = mapped_column(Float, nullable=True, index=True)
+    sold: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    warranty: Mapped[str | None] = mapped_column(Text, nullable=True)
+    accessories: Mapped[str | None] = mapped_column(Text, nullable=True)
+    color: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    image_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    online_only: Mapped[bool] = mapped_column(Boolean, default=False)
     description: Mapped[str] = mapped_column(Text, default="")
+    search_text: Mapped[str] = mapped_column(Text, default="")
+    source: Mapped[str] = mapped_column(String(64), default="")
+    norm: Mapped[dict] = mapped_column(JSON, default=dict)   # parsed numeric/text specs
+    specs: Mapped[dict] = mapped_column(JSON, default=dict)  # raw Vietnamese spec_product
+
+
+class ProductSpec(Base):
+    """Fully-normalized (EAV) view of each product's raw specs — one row per
+    (sku, spec_key) — so specs are queryable in pure SQL / via PostgREST."""
+
+    __tablename__ = "product_specs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    sku: Mapped[str] = mapped_column(String(32), index=True)
+    category_code: Mapped[int] = mapped_column(Integer, index=True)
+    spec_key: Mapped[str] = mapped_column(String(128), index=True)
+    spec_value: Mapped[str] = mapped_column(Text, default="")
+
+
+class KbDoc(Base):
+    """Policy / FAQ knowledge base chunks (bảo hành, giao hàng, khui hộp Apple...)."""
+
+    __tablename__ = "kb_docs"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    topic: Mapped[str] = mapped_column(String(64), default="", index=True)
+    question: Mapped[str] = mapped_column(Text, default="")
+    answer: Mapped[str] = mapped_column(Text, default="")
+    source: Mapped[str] = mapped_column(String(128), default="")
 
 
 class Lead(Base):

@@ -14,11 +14,33 @@ def reload_kb() -> None:
     _product_cache = None
 
 
+def _load_faq_from_pg() -> list[dict] | None:
+    try:
+        from sqlalchemy import select
+
+        from app.db.sync import SyncSession
+        from app.models.entities import KbDoc
+
+        with SyncSession() as session:
+            rows = session.execute(select(KbDoc)).scalars().all()
+        return [
+            {"id": r.id, "question": r.question, "answer": r.answer, "topic": r.topic, "source": r.source}
+            for r in rows
+        ] or None
+    except Exception:
+        return None
+
+
 def _load_faq() -> list[dict]:
+    """KB chunks — from PostgreSQL (primary), falling back to the JSON file."""
     global _faq_cache
     if _faq_cache is None:
-        path = _DATA / "faq.json"
-        _faq_cache = json.loads(path.read_text(encoding="utf-8")) if path.exists() else []
+        pg = _load_faq_from_pg()
+        if pg is not None:
+            _faq_cache = pg
+        else:
+            path = _DATA / "faq.json"
+            _faq_cache = json.loads(path.read_text(encoding="utf-8")) if path.exists() else []
     return _faq_cache
 
 

@@ -9,7 +9,7 @@ from app.models.entities import OrderDraft
 
 @tool
 async def create_order_draft(items_json: str, notes: str = "") -> str:
-    """Tạo đơn nháp tủ lạnh. items_json: JSON list [{sku, qty}]."""
+    """Tạo đơn nháp sản phẩm. items_json: JSON list [{sku, qty}]."""
     note_tool("create_order_draft")
     ctx = get_ctx()
     try:
