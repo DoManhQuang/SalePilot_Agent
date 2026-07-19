@@ -9,11 +9,15 @@ settings = get_settings()
 
 
 def _async_connect_args(url: str) -> dict:
-    """Enable TLS for a remote managed Postgres (e.g. Neon) on the asyncpg driver.
+    """Connect args for a remote managed Postgres (e.g. Neon) on the asyncpg driver.
 
-    Local dev DBs (docker `postgres` service / localhost) don't serve TLS, so we
-    only attach an SSL context when the host is clearly remote. asyncpg needs an
-    SSLContext (it ignores libpq's `sslmode=` query param).
+    Local dev DBs (docker `postgres` / localhost) don't serve TLS, so we only add
+    these when the host is clearly remote:
+      - ssl: asyncpg needs an SSLContext (it ignores libpq's `sslmode=`).
+      - statement_cache_size / prepared_statement_cache_size = 0: required when the
+        endpoint is a PgBouncer pooler (Neon "-pooler"), otherwise prepared
+        statements clash across pooled connections ("prepared statement already
+        exists"). Harmless on a direct endpoint too.
     """
     if not url.startswith("postgresql+asyncpg://"):
         return {}
@@ -21,7 +25,11 @@ def _async_connect_args(url: str) -> dict:
         return {}
     import ssl
 
-    return {"ssl": ssl.create_default_context()}
+    return {
+        "ssl": ssl.create_default_context(),
+        "statement_cache_size": 0,
+        "prepared_statement_cache_size": 0,
+    }
 
 
 engine = create_async_engine(

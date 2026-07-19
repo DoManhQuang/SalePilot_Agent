@@ -60,7 +60,7 @@ services:
     # runtime knobs are set here. To go back to local DBs, restore those vars.
     environment:
       CATALOG_BACKEND: postgres
-      CORS_ORIGINS: http://localhost:3000,http://127.0.0.1:3000
+      CORS_ORIGINS: http://localhost:3000,http://127.0.0.1:3000,https://sale-pilot-agent.vercel.app
       CHROMA_PATH: ./data/chroma
     volumes:
       - ./backend/data:/app/data
